@@ -19,7 +19,6 @@ provider "google" {
 provider "restapi" {
   alias                = "zenml_api"
   uri                  = var.zenml_server_url
-  debug                = true
   write_returns_object = true
 
   headers = {
@@ -126,7 +125,8 @@ resource "google_service_account_key" "zenml_sa_key" {
 
 resource "restapi_object" "zenml_stack" {
   provider = restapi.zenml_api
-  path = "/api/v1/workspaces/default/full-stack"
+  path = "/api/v1/stacks"
+  create_path = "/api/v1/workspaces/default/full-stack"
   data = <<EOF
 {
   "name": "terraform-gcp-stack-${random_id.resource_name_suffix.hex}",
@@ -174,4 +174,15 @@ resource "restapi_object" "zenml_stack" {
   }
 }
 EOF
+  lifecycle {
+    # Given that we don't yet support updating a full stack, we force a new
+    # resource to be created whenever any of the inputs change.
+    replace_triggered_by = [
+      random_id.resource_name_suffix,
+      google_storage_bucket.artifact_store,
+      google_artifact_registry_repository.container_registry,
+      google_service_account.zenml_sa,
+      google_service_account_key.zenml_sa_key
+    ]
+  }
 }
