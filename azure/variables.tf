@@ -15,10 +15,18 @@ variable "zenml_server_url" {
   type        = string
 }
 
+variable "zenml_api_key" {
+  description = "ZenML API key to authenticate with the ZenML server"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "zenml_api_token" {
   description = "The API token for authenticating with the ZenML server"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "storage_account_tier" {

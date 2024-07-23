@@ -21,13 +21,26 @@ provider "azurerm" {
 
 provider "azuread" {}
 
+data "http" "zenml_login" {
+  count = var.zenml_api_key != "" ? 1 : 0
+  url = "${var.zenml_server_url}/api/v1/login"
+
+  method = "POST"
+
+  request_body = "password=${urlencode(var.zenml_api_key)}"
+
+  request_headers = {
+    Content-Type = "application/x-www-form-urlencoded"
+  }
+}
+
 provider "restapi" {
   alias                = "zenml_api"
   uri                  = var.zenml_server_url
   write_returns_object = true
 
   headers = {
-    Authorization = "Bearer ${var.zenml_api_token}"
+    Authorization = "Bearer ${var.zenml_api_key == "" ? var.zenml_api_token : jsondecode(data.http.zenml_login[0].response_body).access_token}"
   }
 }
 
