@@ -1,13 +1,7 @@
 variable "region" {
   description = "The AWS region to deploy resources in"
   type        = string
-  default     = "us-east-1"
-}
-
-variable "name_suffix" {
-  description = "A suffix to append to resource names for uniqueness"
-  type        = string
-  default     = "default"
+  default     = "eu-central-1"
 }
 
 variable "zenml_server_url" {
@@ -15,13 +9,16 @@ variable "zenml_server_url" {
   type        = string
 }
 
+variable "zenml_api_key" {
+  description = "ZenML API key to authenticate with the ZenML server"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "zenml_api_token" {
   description = "The API token for authenticating with the ZenML server"
   type        = string
   sensitive   = true
-}
-
-variable "project_id" {
-  description = "The AWS account ID"
-  type        = string
+  default     = ""
 }
