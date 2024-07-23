@@ -1,12 +1,13 @@
-variable "name_suffix" {
-  description = "A suffix to append to the names of resources to ensure uniqueness"
-  type        = string
-}
-
 variable "location" {
   description = "The Azure region where resources will be created"
+  # Make a choice from the list of Azure regions
   type        = string
-  default     = "eastus"
+  default     = "westus"
+
+  validation {
+    condition     = contains(["centralus", "eastus", "eastus2", "northcentralus", "southcentralus", "westcentralus", "westus", "westus2", "westus3"], var.location)
+    error_message = "Skypilot currently only supports the US Azure regions" 
+  }  
 }
 
 variable "zenml_server_url" {
@@ -18,17 +19,6 @@ variable "zenml_api_token" {
   description = "The API token for authenticating with the ZenML server"
   type        = string
   sensitive   = true
-}
-
-variable "project_id" {
-  description = "The Azure subscription ID where resources will be created"
-  type        = string
-}
-
-variable "resource_group_name" {
-  description = "The name of the resource group to create"
-  type        = string
-  default     = "zenml-resources"
 }
 
 variable "storage_account_tier" {
@@ -46,11 +36,5 @@ variable "storage_account_replication_type" {
 variable "container_registry_sku" {
   description = "The SKU of the container registry"
   type        = string
-  default     = "Standard"
-}
-
-variable "service_principal_name" {
-  description = "The name of the service principal to create"
-  type        = string
-  default     = "zenml-service-principal"
+  default     = "Basic"
 }

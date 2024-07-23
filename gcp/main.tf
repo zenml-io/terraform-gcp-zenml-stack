@@ -130,7 +130,7 @@ resource "restapi_object" "zenml_stack" {
   data = <<EOF
 {
   "name": "terraform-gcp-stack-${random_id.resource_name_suffix.hex}",
-  "description": "Deployed with the ZenML Stack Terraform module in the '${var.project_id}' project and '${var.region}' region.",
+  "description": "Deployed with the ZenML GCP Stack Terraform module in the '${var.project_id}' project and '${var.region}' region.",
   "labels": {
     "zenml:provider": "gcp",
     "zenml:deployment": "terraform"
