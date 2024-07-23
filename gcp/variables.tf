@@ -14,7 +14,16 @@ variable "zenml_server_url" {
   type        = string
 }
 
+variable "zenml_api_key" {
+  description = "ZenML API key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "zenml_api_token" {
   description = "ZenML API token"
   type        = string
+  sensitive   = true
+  default     = ""
 }
