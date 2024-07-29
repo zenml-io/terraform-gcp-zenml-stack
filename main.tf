@@ -142,11 +142,11 @@ resource "restapi_object" "zenml_stack" {
   create_path = "/api/v1/workspaces/default/full-stack"
   data = <<EOF
 {
-  "name": "terraform-gcp-stack-${random_id.resource_name_suffix.hex}",
+  "name": "${var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : var.zenml_stack_name}",
   "description": "Deployed with the ZenML GCP Stack Terraform module in the '${var.project_id}' project and '${var.region}' region.",
   "labels": {
     "zenml:provider": "gcp",
-    "zenml:deployment": "terraform"
+    "zenml:deployment": "${var.zenml_stack_deployment}"
   },
   "service_connectors": [
     {
