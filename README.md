@@ -22,13 +22,17 @@ Thank you for your support! 🌟
 
 ## 🚀 Overview
 
+[![Youtube Video](http://img.youtube.com/vi/AU2MeBDG3D4/0.jpg)](https://www.youtube.com/watch?v=AU2MeBDG3D4 "Deploying ZenML on GCP with Terraform")
+
 This Terraform module sets up the necessary GCP infrastructure for a [ZenML](https://zenml.io) stack. It provisions various GCP services and resources, and registers [a ZenML stack](https://docs.zenml.io/user-guide/production-guide/understand-stacks) using these resources with your ZenML server, allowing you to create an internal MLOps platform for your entire machine learning team.
 
 ## 🛠 Prerequisites
 
 - Terraform installed (version >= 1.9")
 - GCP account set up
-- the GCP CLI installed and authenticated with your GCP account
+- To authenticate with GCP, you need to have [the `gcloud` CLI](https://cloud.google.com/sdk/gcloud)
+installed on your machine and you need to have run `gcloud init` or `gcloud auth login`
+to set up your credentials.
 - [ZenML (version >= 0.62.0) installed and configured](https://docs.zenml.io/getting-started/installation). You'll need a Zenml server deployed in a remote setting where it can be accessed from GCP. You have the option to either [self-host a ZenML server](https://docs.zenml.io/getting-started/deploying-zenml) or [register for a free ZenML Pro account](https://cloud.zenml.io/signup).
 
 ## 🏗 GCP Resources Created
@@ -51,6 +55,12 @@ The ZenML stack configuration is the following:
 4. a Google Cloud Build Image Builder linked to the GCP project
 4. a GCP Service Connector configured with the GCP service account credentials and used to authenticate all ZenML components with the GCP resources
 
+To use the ZenML stack, you will need to install the required integrations:
+
+```shell
+zenml integration install gcp
+```
+
 ## 🚀 Usage
 
 To use this module, aside from the prerequisites mentioned above, you also need to create [a ZenML Service Account API key](https://docs.zenml.io/how-to/connecting-to-zenml/connect-with-a-service-account) for your ZenML Server. You can do this by running the following command in a terminal where you have the ZenML CLI installed:
@@ -71,10 +81,10 @@ module "zenml_stack" {
   zenml_api_key = "ZENKEY_1234567890..."
 }
 output "zenml_stack_id" {
-  value = module.zenml_stack_id
+  value = module.zenml_stack.zenml_stack_id
 }
 output "zenml_stack_name" {
-  value = module.zenml_stack_name
+  value = module.zenml_stack.zenml_stack_name
 }
 ```
 
