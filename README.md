@@ -22,8 +22,6 @@ Thank you for your support! 🌟
 
 ## 🚀 Overview
 
-[![Youtube Video](http://img.youtube.com/vi/AU2MeBDG3D4/0.jpg)](https://www.youtube.com/watch?v=AU2MeBDG3D4 "Deploying ZenML on GCP with Terraform")
-
 This Terraform module sets up the necessary GCP infrastructure for a [ZenML](https://zenml.io) stack. It provisions various GCP services and resources, and registers [a ZenML stack](https://docs.zenml.io/user-guide/production-guide/understand-stacks) using these resources with your ZenML server, allowing you to create an internal MLOps platform for your entire machine learning team.
 
 ## 🛠 Prerequisites
