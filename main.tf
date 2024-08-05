@@ -198,4 +198,21 @@ EOF
       google_service_account_key.zenml_sa_key
     ]
   }
+
+  # Depends on all other resources
+  depends_on = [
+    google_project_service.iam,
+    google_project_service.artifactregistry,
+    google_project_service.storage,
+    google_project_service.aiplatform,
+    google_project_service.cloudbuild,
+    google_storage_bucket.artifact_store,
+    google_artifact_registry_repository.container_registry,
+    google_service_account.zenml_sa,
+    google_project_iam_member.storage_object_user,
+    google_project_iam_member.artifact_registry_writer,
+    google_project_iam_member.ai_platform_service_agent,
+    google_project_iam_member.cloud_build_editor,
+    google_service_account_key.zenml_sa_key
+  ]
 }
