@@ -2,7 +2,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
     restapi = {
       source  = "Mastercard/restapi"
@@ -65,13 +65,20 @@ resource "google_project_service" "storage" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "cloudbuild" {
+  service = "cloudbuild.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "aiplatform" {
+  count = var.orchestrator == "vertex" ? 1 : 0
   service = "aiplatform.googleapis.com"
   disable_on_destroy = false
 }
 
-resource "google_project_service" "cloudbuild" {
-  service = "cloudbuild.googleapis.com"
+resource "google_project_service" "composer" {
+  count = var.orchestrator == "airflow" ? 1 : 0
+  service = "composer.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -87,6 +94,21 @@ resource "google_artifact_registry_repository" "container_registry" {
   repository_id = "zenml-${random_id.resource_name_suffix.hex}"
   format        = "DOCKER"
   depends_on    = [google_project_service.artifactregistry]
+}
+
+resource "google_composer_environment" "composer_env" {
+  count  = var.orchestrator == "airflow" ? 1 : 0
+  name   = "zenml-${random_id.resource_name_suffix.hex}"
+  region = var.region
+
+  storage_config {
+    bucket = google_storage_bucket.artifact_store.name
+  }
+
+  config {
+    environment_size = "ENVIRONMENT_SIZE_SMALL"
+    resilience_mode  = "STANDARD_RESILIENCE"
+  }
 }
 
 resource "google_service_account" "zenml_sa" {
@@ -120,6 +142,7 @@ resource "google_project_iam_member" "artifact_registry_writer" {
 }
 
 resource "google_project_iam_member" "ai_platform_service_agent" {
+  count   = var.orchestrator == "vertex" ? 1 : 0
   project = var.project_id
   role    = "roles/aiplatform.serviceAgent"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
@@ -131,8 +154,109 @@ resource "google_project_iam_member" "cloud_build_editor" {
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
+resource "google_project_iam_member" "cloud_build_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+resource "google_project_iam_member" "skypilot_browser" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/browser"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+resource "google_project_iam_member" "skypilot_compute_admin" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/compute.admin"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+resource "google_project_iam_member" "skypilot_iam_service_account_admin" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/iam.serviceAccountAdmin"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+resource "google_project_iam_member" "skypilot_service_account_user" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+resource "google_project_iam_member" "skypilot_service_usage_consumer" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageConsumer"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+resource "google_project_iam_member" "skypilot_storage_admin" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
+
+resource "google_project_iam_member" "skypilot_security_admin" {
+  count   = var.orchestrator == "skypilot" ? 1 : 0
+  project = var.project_id
+  role    = "roles/iam.securityAdmin"
+  member  = "serviceAccount:${google_service_account.zenml_sa.email}"
+}
+
 resource "google_service_account_key" "zenml_sa_key" {
   service_account_id = google_service_account.zenml_sa.name
+}
+
+
+# The orchestrator configuration is different depending on the orchestrator
+# chosen by the user. We use the `orchestrator` variable to determine which
+# configuration to use and construct a local variable `orchestrator_config` to
+# hold the configuration.
+locals {
+  orchestrator_config = {
+    vertex = {
+      "flavor": "vertex",
+      "service_connector_index": 0,
+      "configuration": {
+        "location": "${var.region}",
+        "workload_service_account": "${google_service_account.zenml_sa.email}"
+      }
+    }
+    skypilot = {
+      "flavor": "vm_gcp",
+      "service_connector_index": 0,
+      "configuration": {
+        "region": "${var.region}"
+      }
+    }
+    airflow = {
+      "flavor": "airflow",
+      "configuration": {
+        "dag_output_dir": "gs://${google_storage_bucket.artifact_store.name}/dags",
+        "operator": "kubernetes_pod",
+        "operator_args": "{\"namespace\": \"composer-user-workloads\", \"config_file\": \"/home/airflow/composer_kube_config\"}"
+      }
+    }
+  }
+}
+
+
+resource "terraform_data" "zenml_stack_deps" {
+  input = [
+    var.orchestrator,
+    random_id.resource_name_suffix,
+    var.zenml_stack_name,
+    var.region,
+    var.project_id,
+    var.zenml_server_url,
+  ]
 }
 
 
@@ -172,14 +296,7 @@ resource "restapi_object" "zenml_stack" {
         "uri": "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.container_registry.repository_id}"
       }
     },
-    "orchestrator": {
-      "flavor": "vertex",
-      "service_connector_index": 0,
-      "configuration": {
-        "location": "${var.region}",
-        "workload_service_account": "${google_service_account.zenml_sa.email}"
-      }
-    },
+    "orchestrator": ${jsonencode(local.orchestrator_config[var.orchestrator])},
     "image_builder": {
       "flavor": "gcp",
       "service_connector_index": 0
@@ -191,11 +308,7 @@ EOF
     # Given that we don't yet support updating a full stack, we force a new
     # resource to be created whenever any of the inputs change.
     replace_triggered_by = [
-      random_id.resource_name_suffix,
-      google_storage_bucket.artifact_store,
-      google_artifact_registry_repository.container_registry,
-      google_service_account.zenml_sa,
-      google_service_account_key.zenml_sa_key
+      terraform_data.zenml_stack_deps
     ]
   }
 
@@ -204,15 +317,25 @@ EOF
     google_project_service.iam,
     google_project_service.artifactregistry,
     google_project_service.storage,
-    google_project_service.aiplatform,
+    google_project_service.aiplatform[0],
+    google_project_service.composer[0],
     google_project_service.cloudbuild,
     google_storage_bucket.artifact_store,
     google_artifact_registry_repository.container_registry,
+    google_composer_environment.composer_env[0],
     google_service_account.zenml_sa,
     google_project_iam_member.storage_object_user,
     google_project_iam_member.artifact_registry_writer,
-    google_project_iam_member.ai_platform_service_agent,
+    google_project_iam_member.ai_platform_service_agent[0],
     google_project_iam_member.cloud_build_editor,
+    google_project_iam_member.cloud_build_builder,
+    google_project_iam_member.skypilot_browser[0],
+    google_project_iam_member.skypilot_compute_admin[0],
+    google_project_iam_member.skypilot_iam_service_account_admin[0],
+    google_project_iam_member.skypilot_service_account_user[0],
+    google_project_iam_member.skypilot_service_usage_consumer[0],
+    google_project_iam_member.skypilot_storage_admin[0],
+    google_project_iam_member.skypilot_security_admin[0],
     google_service_account_key.zenml_sa_key
   ]
 }
