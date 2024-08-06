@@ -188,10 +188,10 @@ resource "google_project_iam_member" "skypilot_service_account_user" {
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
-resource "google_project_iam_member" "skypilot_service_usage_consumer" {
+resource "google_project_iam_member" "skypilot_service_usage_admin" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
   project = var.project_id
-  role    = "roles/serviceusage.serviceUsageConsumer"
+  role    = "roles/serviceusage.serviceUsageAdmin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
@@ -333,7 +333,7 @@ EOF
     google_project_iam_member.skypilot_compute_admin[0],
     google_project_iam_member.skypilot_iam_service_account_admin[0],
     google_project_iam_member.skypilot_service_account_user[0],
-    google_project_iam_member.skypilot_service_usage_consumer[0],
+    google_project_iam_member.skypilot_service_usage_admin[0],
     google_project_iam_member.skypilot_storage_admin[0],
     google_project_iam_member.skypilot_security_admin[0],
     google_service_account_key.zenml_sa_key

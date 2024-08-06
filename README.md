@@ -39,7 +39,8 @@ The Terraform module in this repository creates the following resources in your 
 
 1. a GCS bucket
 2. a Google Artifact Registry
-3. a Service Account with a Service Account Key and the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI.
+3. a Cloud Composer environment (only if the `orchestrator` variable is set to `airflow`)
+3. a Service Account with a Service Account Key and the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI, SkyPilot or GCP Cloud Composer.
 
 ## 🧩 ZenML Stack Components
 
@@ -49,15 +50,33 @@ The ZenML stack configuration is the following:
 
 1. an GCP Artifact Store linked to the GCS bucket
 2. an GCP Container Registry linked to the Google Artifact Registry
-3. a Vertex AI Orchestrator linked to the GCP project
+3. depending on the `orchestrator` input variable:
+  * a Vertex AI Orchestrator linked to the GCP project, if `orchestrator` is set to `vertex` (default)
+  * a SkyPilot Orchestrator linked to the GCP project, if `orchestrator` is set to `skypilot`
+  * an Airflow Orchestrator linked to the Cloud Composer environment, if `orchestrator` is set to `airflow`
 4. a Google Cloud Build Image Builder linked to the GCP project
-4. a GCP Service Connector configured with the GCP service account credentials and used to authenticate all ZenML components with the GCP resources
+5. a GCP Service Connector configured with the GCP service account credentials and used to authenticate all ZenML components with the GCP resources
 
 To use the ZenML stack, you will need to install the required integrations:
+
+* for Vertex AI:
 
 ```shell
 zenml integration install gcp
 ```
+
+* for SkyPilot:
+
+```shell
+zenml integration install gcp skypilot_gcp
+```
+
+* for Airflow:
+
+```shell
+zenml integration install gcp airflow
+```
+
 
 ## 🚀 Usage
 
