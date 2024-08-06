@@ -94,6 +94,7 @@ module "zenml_stack" {
 
   project_id = "your-gcp-project-id"
   region = "europe-west1"
+  orchestrator = "vertex" # or "skypilot" or "airflow"
   zenml_server_url = "https://your-zenml-server-url.com"
   zenml_api_key = "ZENKEY_1234567890..."
 }
