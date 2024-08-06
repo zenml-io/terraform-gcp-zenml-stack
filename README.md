@@ -55,7 +55,8 @@ The ZenML stack configuration is the following:
   * a SkyPilot Orchestrator linked to the GCP project, if `orchestrator` is set to `skypilot`
   * an Airflow Orchestrator linked to the Cloud Composer environment, if `orchestrator` is set to `airflow`
 4. a Google Cloud Build Image Builder linked to the GCP project
-5. a GCP Service Connector configured with the GCP service account credentials and used to authenticate all ZenML components with the GCP resources
+5. a Vertex AI Step Operator linked to the GCP project
+6. a GCP Service Connector configured with the GCP service account credentials and used to authenticate all ZenML components with the GCP resources
 
 To use the ZenML stack, you will need to install the required integrations:
 

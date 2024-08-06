@@ -142,7 +142,6 @@ resource "google_project_iam_member" "artifact_registry_writer" {
 }
 
 resource "google_project_iam_member" "ai_platform_service_agent" {
-  count   = var.orchestrator == "vertex" ? 1 : 0
   project = var.project_id
   role    = "roles/aiplatform.serviceAgent"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
@@ -297,6 +296,14 @@ resource "restapi_object" "zenml_stack" {
       }
     },
     "orchestrator": ${jsonencode(local.orchestrator_config[var.orchestrator])},
+    "step_operator": {
+      "flavor": "vertex",
+      "service_connector_index": 0,
+      "configuration": {
+        "region": "${var.region}",
+        "service_account": "${google_service_account.zenml_sa.email}"
+      }
+    },
     "image_builder": {
       "flavor": "gcp",
       "service_connector_index": 0
@@ -326,7 +333,7 @@ EOF
     google_service_account.zenml_sa,
     google_project_iam_member.storage_object_user,
     google_project_iam_member.artifact_registry_writer,
-    google_project_iam_member.ai_platform_service_agent[0],
+    google_project_iam_member.ai_platform_service_agent,
     google_project_iam_member.cloud_build_editor,
     google_project_iam_member.cloud_build_builder,
     google_project_iam_member.skypilot_browser[0],
