@@ -40,7 +40,10 @@ The Terraform module in this repository creates the following resources in your 
 1. a GCS bucket
 2. a Google Artifact Registry
 3. a Cloud Composer environment (only if the `orchestrator` variable is set to `airflow`)
-3. a Service Account with a Service Account Key and the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI, SkyPilot or GCP Cloud Composer.
+4. a Service Account with the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI, SkyPilot or GCP Cloud Composer.
+5. depending on the target ZenML Server capabilities, different authentication methods are used:
+  * for a self-hosted ZenML server, a Service Account Key is generated and shared with the ZenML server
+  * for a ZenML Pro account, GCP Workload Identity Federation is used to authenticate with the ZenML server, so that no sensitive credentials are shared with the ZenML server. For this, a GCP Workload Identity Pool and a GCP Workload Identity Provider are created and linked to the GCP Service Account.
 
 ## 🧩 ZenML Stack Components
 
@@ -56,7 +59,7 @@ The ZenML stack configuration is the following:
   * an Airflow Orchestrator linked to the Cloud Composer environment, if `orchestrator` is set to `airflow`
 4. a Google Cloud Build Image Builder linked to the GCP project
 5. a Vertex AI Step Operator linked to the GCP project
-6. a GCP Service Connector configured with the GCP service account credentials and used to authenticate all ZenML components with the GCP resources
+6. a GCP Service Connector configured with the GCP service account credentials or the GCP Workload Identity Provider configuration and used to authenticate all ZenML components with the GCP resources
 
 To use the ZenML stack, you will need to install the required integrations:
 
