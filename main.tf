@@ -73,14 +73,9 @@ resource "google_project_service" "common_services" {
     "artifactregistry.googleapis.com",
     "storage-api.googleapis.com",
     "cloudbuild.googleapis.com",
+    "aiplatform.googleapis.com",
   ])
   service = each.key
-  disable_on_destroy = false
-}
-
-resource "google_project_service" "aiplatform" {
-  count = var.orchestrator == "vertex" ? 1 : 0
-  service = "aiplatform.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -162,7 +157,6 @@ resource "google_project_iam_member" "cloud_build_builder" {
 }
 
 resource "google_project_iam_member" "ai_platform_service_agent" {
-  count   = var.orchestrator == "vertex" ? 1 : 0
   project = var.project_id
   role    = "roles/aiplatform.serviceAgent"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
@@ -400,14 +394,13 @@ EOF
   # Depends on all other resources
   depends_on = [
     google_project_service.common_services,
-    google_project_service.aiplatform[0],
     google_project_service.composer[0],
     google_artifact_registry_repository.container_registry,
     google_composer_environment.composer_env[0],
     google_service_account.zenml_sa,
     google_project_iam_member.storage_object_user,
     google_project_iam_member.artifact_registry_writer,
-    google_project_iam_member.ai_platform_service_agent[0],
+    google_project_iam_member.ai_platform_service_agent,
     google_project_iam_member.cloud_build_editor,
     google_project_iam_member.cloud_build_builder,
     google_project_iam_member.skypilot_browser[0],
