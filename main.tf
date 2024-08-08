@@ -270,6 +270,9 @@ locals {
   # configuration to use and construct a local variable `orchestrator_config` to
   # hold the configuration.
   orchestrator_config = {
+    local = {
+      "flavor": "local",
+    }
     vertex = {
       "flavor": "vertex",
       "service_connector_index": 0,

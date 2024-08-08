@@ -10,16 +10,15 @@ variable "region" {
 }
 
 variable "orchestrator" {
-  description = "The orchestrator to be used, either 'vertex', 'skypilot' or 'airflow'"
+  description = "The orchestrator to be used, either 'vertex', 'skypilot', 'airflow' or 'local'"
   type        = string
   default     = "vertex"
 
   validation {
-    condition     = contains(["vertex", "skypilot", "airflow"], var.orchestrator)
-    error_message = "The orchestrator must be either 'vertex', 'skypilot' or 'airflow'"
+    condition     = contains(["vertex", "skypilot", "airflow", "local"], var.orchestrator)
+    error_message = "The orchestrator must be either 'vertex', 'skypilot', 'airflow' or 'local'"
   }
 }
-
 
 variable "zenml_server_url" {
   description = "The URL where your ZenML server is hosted. This should be the base URL of the ZenML server, e.g. 'http://zenml.example.com:8080'"

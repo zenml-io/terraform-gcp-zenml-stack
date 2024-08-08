@@ -43,7 +43,7 @@ The Terraform module in this repository creates the following resources in your 
 4. a Service Account with the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI, SkyPilot or GCP Cloud Composer.
 5. depending on the target ZenML Server capabilities, different authentication methods are used:
   * for a self-hosted ZenML server, a Service Account Key is generated and shared with the ZenML server
-  * for a ZenML Pro account, GCP Workload Identity Federation is used to authenticate with the ZenML server, so that no sensitive credentials are shared with the ZenML server. For this, a GCP Workload Identity Pool and a GCP Workload Identity Provider are created and linked to the GCP Service Account.
+  * for a ZenML Pro account, GCP Workload Identity Federation is used to authenticate with the ZenML server, so that no sensitive credentials are shared with the ZenML server. For this, a GCP Workload Identity Pool and a GCP Workload Identity Provider are created and linked to the GCP Service Account. There's only one exception: when the SkyPilot orchestrator is used, this authentication method is not supported, so the Service Account Key is used instead.
 
 ## 🧩 ZenML Stack Components
 
@@ -54,6 +54,7 @@ The ZenML stack configuration is the following:
 1. an GCP Artifact Store linked to the GCS bucket
 2. an GCP Container Registry linked to the Google Artifact Registry
 3. depending on the `orchestrator` input variable:
+  * a local Orchestrator, if `orchestrator` is set to `local`. This can be used in combination with the Vertex AI Step Operator to selectively run some steps locally and some on Vertex AI.
   * a Vertex AI Orchestrator linked to the GCP project, if `orchestrator` is set to `vertex` (default)
   * a SkyPilot Orchestrator linked to the GCP project, if `orchestrator` is set to `skypilot`
   * an Airflow Orchestrator linked to the Cloud Composer environment, if `orchestrator` is set to `airflow`
