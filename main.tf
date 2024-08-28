@@ -53,6 +53,10 @@ locals {
   # because the GCP workload identity federation feature was not available as a GCP Service Connector feature before
   # that version.
   use_workload_identity = local.zenml_pro_tenant_id != null && var.orchestrator != "skypilot" && (local.zenml_version != null && split(".", local.zenml_version)[1] > 63)
+  # Before ZenML version 0.65.0, a separate full-stack endpoint was called to
+  # register deployed stacks. This endpoint was later on merged into the regular
+  # stack endpoint.
+  use_full_stack_endpoint = (local.zenml_version != null && split(".", local.zenml_version)[1] < 65)
 }
 
 data "google_project" "project" {
@@ -297,6 +301,34 @@ locals {
       }
     }
   }
+
+  artifact_store_config = {
+    "flavor": "gcp",
+    "service_connector_index": 0,
+    "configuration": {
+      "path": "gs://${google_storage_bucket.artifact_store.name}"
+    }
+  }
+  container_registry_config = {
+    "flavor": "gcp",
+    "service_connector_index": 0,
+    "configuration": {
+      "uri": "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.container_registry.repository_id}"
+    }
+  }
+  step_operator_config = {
+    "flavor": "vertex",
+    "service_connector_index": 0,
+    "configuration": {
+      "region": "${var.region}",
+      "service_account": "${google_service_account.zenml_sa.email}"
+    }
+  }
+  image_builder_config = {
+    "flavor": "gcp",
+    "service_connector_index": 0
+  }
+
   # The service connector configuration is different depending on whether we are
   # using workload identity federation or not. We use the `use_workload_identity`
   # local variable to determine which configuration to use and construct a local
@@ -327,6 +359,16 @@ locals {
       "service_account_json": "${google_service_account_key.zenml_sa_key.0.private_key}"
     }
   })
+
+  # This is yet another complication that arises from the fact that before
+  # ZenML version 0.65.0, a separate full-stack endpoint was used to register
+  # deployed stacks that used a different format for the stack components.
+  orchestrator = local.use_full_stack_endpoint ? jsonencode(local.orchestrator_config[var.orchestrator]) : jsonencode([local.orchestrator_config[var.orchestrator]])
+  artifact_store = local.use_full_stack_endpoint ? jsonencode(local.artifact_store_config) : jsonencode([local.artifact_store_config])
+  container_registry = local.use_full_stack_endpoint ? jsonencode(local.container_registry_config) : jsonencode([local.container_registry_config])
+  step_operator = local.use_full_stack_endpoint ? jsonencode(local.step_operator_config) : jsonencode([local.step_operator_config])
+  image_builder = local.use_full_stack_endpoint ? jsonencode(local.image_builder_config) : jsonencode([local.image_builder_config])
+
 }
 
 resource "terraform_data" "zenml_stack_deps" {
@@ -346,7 +388,7 @@ resource "terraform_data" "zenml_stack_deps" {
 resource "restapi_object" "zenml_stack" {
   provider = restapi.zenml_api
   path = "/api/v1/stacks"
-  create_path = "/api/v1/workspaces/default/full-stack"
+  create_path = local.use_full_stack_endpoint ? "/api/v1/workspaces/default/full-stack": "/api/v1/workspaces/default/stacks"
   data = <<EOF
 {
   "name": "${var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : var.zenml_stack_name}",
@@ -359,33 +401,11 @@ resource "restapi_object" "zenml_stack" {
     ${local.service_connector_config}
   ],
   "components": {
-    "artifact_store": {
-      "flavor": "gcp",
-      "service_connector_index": 0,
-      "configuration": {
-        "path": "gs://${google_storage_bucket.artifact_store.name}"
-      }
-    },
-    "container_registry":{
-      "flavor": "gcp",
-      "service_connector_index": 0,
-      "configuration": {
-        "uri": "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.container_registry.repository_id}"
-      }
-    },
-    "orchestrator": ${jsonencode(local.orchestrator_config[var.orchestrator])},
-    "step_operator": {
-      "flavor": "vertex",
-      "service_connector_index": 0,
-      "configuration": {
-        "region": "${var.region}",
-        "service_account": "${google_service_account.zenml_sa.email}"
-      }
-    },
-    "image_builder": {
-      "flavor": "gcp",
-      "service_connector_index": 0
-    }
+    "artifact_store": ${local.artifact_store},
+    "container_registry": ${local.container_registry},
+    "orchestrator": ${local.orchestrator},
+    "step_operator": ${local.step_operator},
+    "image_builder": ${local.image_builder}
   }
 }
 EOF
