@@ -257,6 +257,11 @@ locals {
     service_account = {
       service_account_json = local.use_workload_identity ? "" : google_service_account_key.zenml_sa_key.0.private_key
     }
+    service_account_skypilot = {
+      service_account_json = local.use_workload_identity ? "" : google_service_account_key.zenml_sa_key.0.private_key
+      # The Skypilot orchestrator does not support GCP temporary credentials
+      generate_temporary_tokens = false
+    }
   }
 }
 
@@ -382,7 +387,7 @@ resource "zenml_service_connector" "gcp" {
   auth_method    = local.use_workload_identity ? "external-account" : "service-account"
   resource_type  = "gcp-generic"
 
-  configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : "service_account"]
+  configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : (var.orchestrator == "skypilot" ? "service_account_skypilot" : "service_account")]
 
   labels = {
     "zenml:provider" = "gcp"
