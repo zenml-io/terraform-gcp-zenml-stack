@@ -29,9 +29,21 @@ This Terraform module sets up the necessary GCP infrastructure for a [ZenML](htt
 - Terraform installed (version >= 1.9")
 - GCP account set up
 - To authenticate with GCP, you need to have [the `gcloud` CLI](https://cloud.google.com/sdk/gcloud)
-installed on your machine and you need to have run `gcloud init` or `gcloud auth login`
+installed on your machine and you need to have run `gcloud auth application-default login`
 to set up your credentials.
-- [ZenML (version >= 0.62.0) installed and configured](https://docs.zenml.io/getting-started/installation). You'll need a Zenml server deployed in a remote setting where it can be accessed from GCP. You have the option to either [self-host a ZenML server](https://docs.zenml.io/getting-started/deploying-zenml) or [register for a free ZenML Pro account](https://cloud.zenml.io/signup).
+- You'll need a Zenml server (version >= 0.62.0) deployed in a remote setting where it can be accessed from GCP. You have the option to either [self-host a ZenML server](https://docs.zenml.io/getting-started/deploying-zenml) or [register for a free ZenML Pro account](https://cloud.zenml.io/signup). Once you have a ZenML Server set up, you also need to create [a ZenML Service Account API key](https://docs.zenml.io/how-to/connecting-to-zenml/connect-with-a-service-account) for your ZenML Server. You can do this by running the following command in a terminal where you have the ZenML CLI installed:
+
+```bash
+zenml service-account create <service-account-name>
+```
+
+- This Terraform module uses [the ZenML Terraform provider](https://registry.terraform.io/providers/zenml-io/zenml/latest/docs). It is recommended to use environment variables to configure the ZenML Terraform provider with the API key and server URL. You can set the environment variables as follows:
+
+```bash
+export ZENML_SERVER_URL="https://your-zenml-server.com"
+export ZENML_API_KEY="your-api-key"
+```
+
 
 ## 🏗 GCP Resources Created
 
@@ -51,16 +63,15 @@ The Terraform module automatically registers a fully functional GCP [ZenML stack
 
 The ZenML stack configuration is the following:
 
-1. an GCP Artifact Store linked to the GCS bucket
-2. an GCP Container Registry linked to the Google Artifact Registry
+1. an GCP Artifact Store linked to the GCS bucket via an AWS Service Connector configured with IAM role credentials
+2. an GCP Container Registry linked to the Google Artifact Registry via an AWS Service Connector configured with IAM role credentials
 3. depending on the `orchestrator` input variable:
-  * a local Orchestrator, if `orchestrator` is set to `local`. This can be used in combination with the Vertex AI Step Operator to selectively run some steps locally and some on Vertex AI.
-  * a Vertex AI Orchestrator linked to the GCP project, if `orchestrator` is set to `vertex` (default)
-  * a SkyPilot Orchestrator linked to the GCP project, if `orchestrator` is set to `skypilot`
-  * an Airflow Orchestrator linked to the Cloud Composer environment, if `orchestrator` is set to `airflow`
-4. a Google Cloud Build Image Builder linked to the GCP project
-5. a Vertex AI Step Operator linked to the GCP project
-6. a GCP Service Connector configured with the GCP service account credentials or the GCP Workload Identity Provider configuration and used to authenticate all ZenML components with the GCP resources
+  * if `orchestrator` is set to `local`: a local Orchestrator. This can be used in combination with the Vertex AI Step Operator to selectively run some steps locally and some on Vertex AI.
+  * if `orchestrator` is set to `vertex` (default): a Vertex AI Orchestrator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+  * if `orchestrator` is set to `skypilot`: a SkyPilot Orchestrator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+  * if `orchestrator` is set to `airflow`: an Airflow Orchestrator linked to the Cloud Composer environment
+4. a Google Cloud Build Image Builder linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+5. a Vertex AI Step Operator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
 
 To use the ZenML stack, you will need to install the required integrations:
 
@@ -94,20 +105,40 @@ zenml service-account create <service-account-name>
 ### Basic Configuration
 
 ```hcl
+terraform {
+    required_providers {
+        google = {
+            source  = "hashicorp/google"
+        }
+        zenml = {
+            source = "zenml-io/zenml"
+        }
+    }
+}
+
+provider "google" {
+    region  = "europe-west3"
+    project = "my-project"
+}
+
+provider "zenml" {
+    # server_url = <taken from the ZENML_SERVER_URL environment variable if not set here>
+    # api_key = <taken from the ZENML_API_KEY environment variable if not set here>
+}
+
 module "zenml_stack" {
   source  = "zenml-io/zenml-stack/gcp"
 
-  project_id = "your-gcp-project-id"
-  region = "europe-west1"
-  orchestrator = "vertex" # or "skypilot" or "airflow"
-  zenml_server_url = "https://your-zenml-server-url.com"
-  zenml_api_key = "ZENKEY_1234567890..."
+  orchestrator = "vertex" # or "skypilot", "airflow" or "local"
+  zenml_stack_name = "my-zenml-stack"
 }
+
 output "zenml_stack_id" {
-  value = module.zenml_stack.zenml_stack_id
+  value = module.zenml_stack.zenml_stack.id
 }
+
 output "zenml_stack_name" {
-  value = module.zenml_stack.zenml_stack_name
+  value = module.zenml_stack.zenml_stack.name
 }
 ```
 
