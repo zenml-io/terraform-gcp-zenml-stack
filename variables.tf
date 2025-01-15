@@ -20,9 +20,3 @@ variable "zenml_stack_deployment" {
   type        = string
   default     = "terraform"
 }
-
-variable "zenml_pro_aws_account" {
-  description = "The AWS account ID in the context of which the ZenML Pro tenant is running. This is only used with ZenML Pro users to configure GCP workload identity provider for the ZenML stack authentication."
-  type        = string
-  default     = "715803424590"
-}
