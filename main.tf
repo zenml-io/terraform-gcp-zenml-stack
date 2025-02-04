@@ -5,7 +5,7 @@ terraform {
       version = "~> 5.0"
     }
     zenml = {
-        source = "zenml-io/zenml"
+      source = "zenml-io/zenml"
     }
   }
 }
@@ -18,12 +18,12 @@ data "zenml_server" "zenml_info" {}
 
 locals {
   zenml_pro_tenant_id = try(data.zenml_server.zenml_info.metadata["tenant_id"], null)
-  dashboard_url = try(data.zenml_server.zenml_info.dashboard_url, "")
+  dashboard_url       = try(data.zenml_server.zenml_info.dashboard_url, "")
   # Check if the dashboard URL indicates a ZenML Cloud deployment
-  is_zenml_cloud = length(regexall("^https://cloud\\.zenml\\.io/", local.dashboard_url)) > 0
-  is_zenml_cloud_staging = length(regexall("^https://staging\\.cloud\\.zenml\\.io/", local.dashboard_url)) > 0
-  zenml_pro_aws_account = local.is_zenml_cloud ? "715803424590" : "339712793861"
-  zenml_version = data.zenml_server.zenml_info.version
+  is_zenml_cloud                 = length(regexall("^https://cloud\\.zenml\\.io/", local.dashboard_url)) > 0
+  is_zenml_cloud_staging         = length(regexall("^https://staging\\.cloud\\.zenml\\.io/", local.dashboard_url)) > 0
+  zenml_pro_aws_account          = local.is_zenml_cloud ? "715803424590" : "339712793861"
+  zenml_version                  = data.zenml_server.zenml_info.version
   zenml_pro_tenant_iam_role_name = local.zenml_pro_tenant_id != null ? "zenml-${local.zenml_pro_tenant_id}" : ""
   # Use workload identity federation only when connected to a ZenML Pro tenant running version higher than 0.63.0 and
   # not using SkyPilot. SkyPilot cannot be used with workload identity federation because it does not support the GCP
@@ -48,20 +48,20 @@ resource "google_project_service" "common_services" {
     "cloudbuild.googleapis.com",
     "aiplatform.googleapis.com",
   ])
-  service = each.key
+  service            = each.key
   disable_on_destroy = false
 }
 
 resource "google_project_service" "composer" {
-  count = var.orchestrator == "airflow" ? 1 : 0
-  service = "composer.googleapis.com"
+  count              = var.orchestrator == "airflow" ? 1 : 0
+  service            = "composer.googleapis.com"
   disable_on_destroy = false
 }
 
 resource "google_storage_bucket" "artifact_store" {
-  name     = "zenml-${data.google_project.project.number}-${random_id.resource_name_suffix.hex}"
-  location = data.google_client_config.current.region
-  depends_on = [google_project_service.common_services]
+  name          = "zenml-${data.google_project.project.number}-${random_id.resource_name_suffix.hex}"
+  location      = data.google_client_config.current.region
+  depends_on    = [google_project_service.common_services]
   force_destroy = true
 }
 
@@ -190,25 +190,25 @@ resource "google_service_account_key" "zenml_sa_key" {
   # When connected to a ZenML Pro tenant, we don't need to create a service
   # account key. We use workload identity federation instead to grant access to
   # the AWS IAM role associated with the ZenML Pro tenant.
-  count = local.use_workload_identity ? 0 : 1
+  count              = local.use_workload_identity ? 0 : 1
   service_account_id = google_service_account.zenml_sa.name
 }
 
 resource "google_iam_workload_identity_pool" "workload_identity_pool" {
-  count        = local.use_workload_identity ? 1 : 0
+  count                     = local.use_workload_identity ? 1 : 0
   workload_identity_pool_id = "zenml-${random_id.resource_name_suffix.hex}"
 }
 
 resource "google_iam_workload_identity_pool_provider" "aws_provider" {
-  count        = local.use_workload_identity ? 1 : 0
-  workload_identity_pool_id = google_iam_workload_identity_pool.workload_identity_pool[0].workload_identity_pool_id
+  count                              = local.use_workload_identity ? 1 : 0
+  workload_identity_pool_id          = google_iam_workload_identity_pool.workload_identity_pool[0].workload_identity_pool_id
   workload_identity_pool_provider_id = "zenml-pro-aws"
   attribute_condition                = "attribute.aws_role_name=='${local.zenml_pro_tenant_iam_role_name}'"
   aws {
     account_id = local.zenml_pro_aws_account
   }
   attribute_mapping = {
-    "google.subject"      = "assertion.arn"
+    "google.subject"          = "assertion.arn"
     "attribute.aws_role_name" = "assertion.arn.extract('assumed-role/{role_name}/')"
   }
 
@@ -216,7 +216,7 @@ resource "google_iam_workload_identity_pool_provider" "aws_provider" {
 }
 
 resource "google_service_account_iam_binding" "workload_identity_binding" {
-  count        = local.use_workload_identity ? 1 : 0
+  count              = local.use_workload_identity ? 1 : 0
   service_account_id = google_service_account.zenml_sa.name
   role               = "roles/iam.workloadIdentityUser"
   members = [
@@ -246,16 +246,16 @@ locals {
     external_account = {
       project_id = "${data.google_client_config.current.project}"
       external_account_json = local.use_workload_identity ? jsonencode({
-        "type": "external_account",
-        "audience": "//iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.workload_identity_pool[0].workload_identity_pool_id}/providers/${google_iam_workload_identity_pool_provider.aws_provider[0].workload_identity_pool_provider_id}",
-        "subject_token_type": "urn:ietf:params:aws:token-type:aws4_request",
-        "token_url": "https://sts.googleapis.com/v1/token",
-        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${google_service_account.zenml_sa.email}:generateAccessToken",
+        "type" : "external_account",
+        "audience" : "//iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.workload_identity_pool[0].workload_identity_pool_id}/providers/${google_iam_workload_identity_pool_provider.aws_provider[0].workload_identity_pool_provider_id}",
+        "subject_token_type" : "urn:ietf:params:aws:token-type:aws4_request",
+        "token_url" : "https://sts.googleapis.com/v1/token",
+        "service_account_impersonation_url" : "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${google_service_account.zenml_sa.email}:generateAccessToken",
         "credential_source" = {
-          "environment_id": "aws1",
-          "region_url": "http://169.254.169.254/latest/meta-data/placement/availability-zone",
-          "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials",
-          "regional_cred_verification_url": "https://sts.{region}.amazonaws.com?Action=GetCallerIdentity&Version=2011-06-15"
+          "environment_id" : "aws1",
+          "region_url" : "http://169.254.169.254/latest/meta-data/placement/availability-zone",
+          "url" : "http://169.254.169.254/latest/meta-data/iam/security-credentials",
+          "regional_cred_verification_url" : "https://sts.{region}.amazonaws.com?Action=GetCallerIdentity&Version=2011-06-15"
         }
       }) : ""
     }
@@ -273,16 +273,16 @@ locals {
 # Artifact Store Component
 
 resource "zenml_service_connector" "gcs" {
-  name           = "${var.zenml_stack_name == "" ? "terraform-gcs-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcs"}"
-  type           = "gcp"
-  auth_method    = local.use_workload_identity ? "external-account" : "service-account"
-  resource_type  = "gcs-bucket"
-  resource_id    = google_storage_bucket.artifact_store.name
+  name          = var.zenml_stack_name == "" ? "terraform-gcs-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcs"
+  type          = "gcp"
+  auth_method   = local.use_workload_identity ? "external-account" : "service-account"
+  resource_type = "gcs-bucket"
+  resource_id   = google_storage_bucket.artifact_store.name
 
   configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : "service_account"]
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 
@@ -299,9 +299,9 @@ resource "zenml_service_connector" "gcs" {
 }
 
 resource "zenml_stack_component" "artifact_store" {
-  name      = "${var.zenml_stack_name == "" ? "terraform-gcs-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcs"}"
-  type      = "artifact_store"
-  flavor    = "gcp"
+  name   = var.zenml_stack_name == "" ? "terraform-gcs-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcs"
+  type   = "artifact_store"
+  flavor = "gcp"
 
   configuration = {
     path = "gs://${google_storage_bucket.artifact_store.name}"
@@ -310,7 +310,7 @@ resource "zenml_stack_component" "artifact_store" {
   connector_id = zenml_service_connector.gcs.id
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 }
@@ -318,18 +318,18 @@ resource "zenml_stack_component" "artifact_store" {
 # Container Registry Component
 
 resource "zenml_service_connector" "gar" {
-  name           = "${var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"}"
-  type           = "gcp"
-  auth_method    = local.use_workload_identity ? "external-account" : "service-account"
-  resource_type  = "docker-registry"
+  name          = var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"
+  type          = "gcp"
+  auth_method   = local.use_workload_identity ? "external-account" : "service-account"
+  resource_type = "docker-registry"
   # The resource ID for the Google Artifact Registry is in the format:
   # projects/<project-id>/locations/<location>/repositories/<repository-id>
-  resource_id    = "projects/${data.google_client_config.current.project}/locations/${data.google_client_config.current.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}"
-  
+  resource_id = "projects/${data.google_client_config.current.project}/locations/${data.google_client_config.current.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}"
+
   configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : "service_account"]
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 
@@ -346,9 +346,9 @@ resource "zenml_service_connector" "gar" {
 }
 
 resource "zenml_stack_component" "container_registry" {
-  name      = "${var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"}"
-  type      = "container_registry"
-  flavor    = "gcp"
+  name   = var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"
+  type   = "container_registry"
+  flavor = "gcp"
 
   configuration = {
     uri = "${data.google_client_config.current.region}-docker.pkg.dev/${data.google_client_config.current.project}/${google_artifact_registry_repository.container_registry.repository_id}"
@@ -357,7 +357,7 @@ resource "zenml_stack_component" "container_registry" {
   connector_id = zenml_service_connector.gar.id
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 }
@@ -372,7 +372,7 @@ locals {
   orchestrator_config = {
     local = {}
     vertex = {
-      location = "${data.google_client_config.current.region}"
+      location                 = "${data.google_client_config.current.region}"
       workload_service_account = "${google_service_account.zenml_sa.email}"
     }
     skypilot = {
@@ -380,22 +380,22 @@ locals {
     }
     airflow = {
       dag_output_dir = "gs://${google_storage_bucket.artifact_store.name}/dags",
-      operator = "kubernetes_pod",
-      operator_args = "{\"namespace\": \"composer-user-workloads\", \"config_file\": \"/home/airflow/composer_kube_config\"}"
+      operator       = "kubernetes_pod",
+      operator_args  = "{\"namespace\": \"composer-user-workloads\", \"config_file\": \"/home/airflow/composer_kube_config\"}"
     }
   }
 }
 
 resource "zenml_service_connector" "gcp" {
-  name           = "${var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"}"
-  type           = "gcp"
-  auth_method    = local.use_workload_identity ? "external-account" : "service-account"
-  resource_type  = "gcp-generic"
+  name          = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"
+  type          = "gcp"
+  auth_method   = local.use_workload_identity ? "external-account" : "service-account"
+  resource_type = "gcp-generic"
 
   configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : (var.orchestrator == "skypilot" ? "service_account_skypilot" : "service_account")]
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 
@@ -422,69 +422,90 @@ resource "zenml_service_connector" "gcp" {
 }
 
 resource "zenml_stack_component" "orchestrator" {
-  name      = "${var.zenml_stack_name == "" ? "terraform-${var.orchestrator}-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-${var.orchestrator}"}"
-  type      = "orchestrator"
-  flavor    = var.orchestrator == "skypilot" ? "vm_gcp" : var.orchestrator
+  name   = var.zenml_stack_name == "" ? "terraform-${var.orchestrator}-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-${var.orchestrator}"
+  type   = "orchestrator"
+  flavor = var.orchestrator == "skypilot" ? "vm_gcp" : var.orchestrator
 
   configuration = local.orchestrator_config[var.orchestrator]
 
   connector_id = contains(["local", "airflow"], var.orchestrator) ? "" : zenml_service_connector.gcp.id
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 }
 
 # Step Operator
 resource "zenml_stack_component" "step_operator" {
-  name      = "${var.zenml_stack_name == "" ? "terraform-vertex-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-vertex"}"
-  type      = "step_operator"
-  flavor    = "vertex"
+  name   = var.zenml_stack_name == "" ? "terraform-vertex-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-vertex"
+  type   = "step_operator"
+  flavor = "vertex"
 
   configuration = {
-    region = "${data.google_client_config.current.region}",
+    region          = "${data.google_client_config.current.region}",
     service_account = "${google_service_account.zenml_sa.email}"
   }
 
   connector_id = zenml_service_connector.gcp.id
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 }
 
 # Image Builder
 resource "zenml_stack_component" "image_builder" {
-  name      = "${var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"}"
-  type      = "image_builder"
-  flavor    = "gcp"
+  name   = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"
+  type   = "image_builder"
+  flavor = "gcp"
 
   configuration = {}
 
   connector_id = zenml_service_connector.gcp.id
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
+    "zenml:deployment" = "${var.zenml_stack_deployment}"
+  }
+}
+
+# Experiment Tracker
+resource "zenml_stack_component" "experiment_tracker" {
+  name   = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"
+  type   = "experiment_tracker"
+  flavor = "vertex"
+
+  configuration = {
+    project        = "${data.google_client_config.current.project}",
+    location       = "${data.google_client_config.current.region}"
+    staging_bucket = "gs://${google_storage_bucket.artifact_store.name}"
+  }
+
+  connector_id = zenml_service_connector.gcp.id
+
+  labels = {
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 }
 
 # Complete Stack
 resource "zenml_stack" "stack" {
-  name = "${var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : var.zenml_stack_name}"
+  name = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : var.zenml_stack_name
 
   components = {
     artifact_store     = zenml_stack_component.artifact_store.id
     container_registry = zenml_stack_component.container_registry.id
-    orchestrator      = zenml_stack_component.orchestrator.id
+    orchestrator       = zenml_stack_component.orchestrator.id
     step_operator      = zenml_stack_component.step_operator.id
     image_builder      = zenml_stack_component.image_builder.id
+    experiment_tracker = zenml_stack_component.experiment_tracker.id
   }
 
   labels = {
-    "zenml:provider" = "gcp"
+    "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
 }
@@ -519,6 +540,10 @@ data "zenml_stack_component" "step_operator" {
 
 data "zenml_stack_component" "image_builder" {
   id = zenml_stack_component.image_builder.id
+}
+
+data "zenml_stack_component" "experiment_tracker" {
+  id = zenml_stack_component.experiment_tracker.id
 }
 
 data "zenml_stack" "stack" {

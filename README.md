@@ -72,6 +72,7 @@ The ZenML stack configuration is the following:
   * if `orchestrator` is set to `airflow`: an Airflow Orchestrator linked to the Cloud Composer environment
 4. a Google Cloud Build Image Builder linked to the GCP project via an AWS Service Connector configured with IAM role credentials
 5. a Vertex AI Step Operator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+6. a Vertex AI Experiment Tracker linked to the GCP project via an AWS Service Connector configured with IAM role credentials
 
 To use the ZenML stack, you will need to install the required integrations:
 
