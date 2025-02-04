@@ -23,7 +23,6 @@ module "zenml_stack" {
     source  = "../"
 
     orchestrator = "vertex" # or "skypilot", "airflow" or "local"
-    zenml_pro_aws_account = "339712793861"
     zenml_stack_name = "gcp-stack"
 }
 
