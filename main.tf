@@ -20,8 +20,8 @@ locals {
   pro_workspace_id = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "")
   pro_dashboard_url = coalesce(data.zenml_server.zenml_info.pro_dashboard_url, "")
   # Check if the dashboard URL indicates a ZenML Cloud deployment
-  is_zenml_cloud = length(regexall("^https://cloud\\.zenml\\.io/", local.pro_dashboard_url)) > 0
-  is_zenml_cloud_staging = length(regexall("^https://staging\\.cloud\\.zenml\\.io/", local.pro_dashboard_url)) > 0
+  is_zenml_cloud = length(regexall("^https://cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
+  is_zenml_cloud_staging = length(regexall("^https://staging\\.cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
   zenml_pro_aws_account = local.is_zenml_cloud ? "715803424590" : "339712793861"
   # Split version string into array of numbers [major, minor, patch]
   zenml_version_parts = [for part in split(".", data.zenml_server.zenml_info.version) : tonumber(part)]
