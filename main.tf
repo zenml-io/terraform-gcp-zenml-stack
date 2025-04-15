@@ -309,14 +309,19 @@ resource "zenml_service_connector" "gcs" {
   ]
 }
 
+locals {
+  artifact_store_default_config = {
+    path = "gs://${google_storage_bucket.artifact_store.name}"
+  }
+  artifact_store_config = merge(local.artifact_store_default_config, var.artifact_store_config)
+}
+
 resource "zenml_stack_component" "artifact_store" {
   name   = var.zenml_stack_name == "" ? "terraform-gcs-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcs"
   type   = "artifact_store"
   flavor = "gcp"
 
-  configuration = {
-    path = "gs://${google_storage_bucket.artifact_store.name}"
-  }
+  configuration = local.artifact_store_config
 
   connector_id = zenml_service_connector.gcs.id
 
@@ -356,14 +361,19 @@ resource "zenml_service_connector" "gar" {
   ]
 }
 
+locals {
+  container_registry_default_config = {
+    uri = "${data.google_client_config.current.region}-docker.pkg.dev/${data.google_client_config.current.project}/${google_artifact_registry_repository.container_registry.repository_id}"
+  }
+  container_registry_config = merge(local.container_registry_default_config, var.container_registry_config)
+}
+
 resource "zenml_stack_component" "container_registry" {
   name   = var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"
   type   = "container_registry"
   flavor = "gcp"
 
-  configuration = {
-    uri = "${data.google_client_config.current.region}-docker.pkg.dev/${data.google_client_config.current.project}/${google_artifact_registry_repository.container_registry.repository_id}"
-  }
+  configuration = local.container_registry_config
 
   connector_id = zenml_service_connector.gar.id
 
@@ -380,7 +390,7 @@ locals {
   # chosen by the user. We use the `orchestrator` variable to determine which
   # configuration to use and construct a local variable `orchestrator_config` to
   # hold the configuration.
-  orchestrator_config = {
+  orchestrator_default_config = {
     local = {}
     vertex = {
       location                 = "${data.google_client_config.current.region}"
@@ -395,6 +405,7 @@ locals {
       operator_args  = "{\"namespace\": \"composer-user-workloads\", \"config_file\": \"/home/airflow/composer_kube_config\"}"
     }
   }
+  orchestrator_config = merge(local.orchestrator_default_config[var.orchestrator], var.orchestrator_config)
 }
 
 resource "zenml_service_connector" "gcp" {
@@ -437,7 +448,7 @@ resource "zenml_stack_component" "orchestrator" {
   type   = "orchestrator"
   flavor = var.orchestrator == "skypilot" ? "vm_gcp" : var.orchestrator
 
-  configuration = local.orchestrator_config[var.orchestrator]
+  configuration = local.orchestrator_config
 
   connector_id = contains(["local", "airflow"], var.orchestrator) ? "" : zenml_service_connector.gcp.id
 
@@ -447,16 +458,21 @@ resource "zenml_stack_component" "orchestrator" {
   }
 }
 
+locals {
+  step_operator_default_config = {
+    region          = "${data.google_client_config.current.region}"
+    service_account = "${google_service_account.zenml_sa.email}"
+  }
+  step_operator_config = merge(local.step_operator_default_config, var.step_operator_config)
+}
+
 # Step Operator
 resource "zenml_stack_component" "step_operator" {
   name   = var.zenml_stack_name == "" ? "terraform-vertex-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-vertex"
   type   = "step_operator"
   flavor = "vertex"
 
-  configuration = {
-    region          = "${data.google_client_config.current.region}",
-    service_account = "${google_service_account.zenml_sa.email}"
-  }
+  configuration = local.step_operator_config
 
   connector_id = zenml_service_connector.gcp.id
 
@@ -466,13 +482,18 @@ resource "zenml_stack_component" "step_operator" {
   }
 }
 
+locals {
+  image_builder_default_config = {}
+  image_builder_config = merge(local.image_builder_default_config, var.image_builder_config)
+}
+
 # Image Builder
 resource "zenml_stack_component" "image_builder" {
   name   = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"
   type   = "image_builder"
   flavor = "gcp"
 
-  configuration = {}
+  configuration = local.image_builder_config
 
   connector_id = zenml_service_connector.gcp.id
 
@@ -480,6 +501,15 @@ resource "zenml_stack_component" "image_builder" {
     "zenml:provider"   = "gcp"
     "zenml:deployment" = "${var.zenml_stack_deployment}"
   }
+}
+
+locals {
+  experiment_tracker_default_config = {
+    project        = "${data.google_client_config.current.project}"
+    location       = "${data.google_client_config.current.region}"
+    staging_bucket = "gs://${google_storage_bucket.artifact_store.name}"
+  }
+  experiment_tracker_config = merge(local.experiment_tracker_default_config, var.experiment_tracker_config)
 }
 
 # Experiment Tracker
@@ -491,11 +521,7 @@ resource "zenml_stack_component" "experiment_tracker" {
   type   = "experiment_tracker"
   flavor = "vertex"
 
-  configuration = {
-    project        = "${data.google_client_config.current.project}",
-    location       = "${data.google_client_config.current.region}"
-    staging_bucket = "gs://${google_storage_bucket.artifact_store.name}"
-  }
+  configuration = local.experiment_tracker_config
 
   connector_id = zenml_service_connector.gcp.id
 
