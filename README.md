@@ -143,6 +143,39 @@ output "zenml_stack_name" {
 }
 ```
 
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0 |
+| <a name="requirement_google"></a> [google](#requirement\_google) | ~> 5.0 |
+| <a name="requirement_zenml"></a> [zenml](#requirement\_zenml) | any version |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_google"></a> [google](#provider\_google) | ~> 5.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | n/a |
+| <a name="provider_zenml"></a> [zenml](#provider\_zenml) | n/a |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_artifact_store_config"></a> [artifact\_store\_config](#input\_artifact\_store\_config) | Configuration for the artifact store. | `map(any)` | `{}` | no |
+| <a name="input_container_registry_config"></a> [container\_registry\_config](#input\_container\_registry\_config) | Configuration for the container registry. | `map(any)` | `{}` | no |
+| <a name="input_experiment_tracker_config"></a> [experiment\_tracker\_config](#input\_experiment\_tracker\_config) | Configuration for the experiment tracker. | `map(any)` | `{}` | no |
+| <a name="input_image_builder_config"></a> [image\_builder\_config](#input\_image\_builder\_config) | Configuration for the image builder. | `map(any)` | `{}` | no |
+| <a name="input_orchestrator"></a> [orchestrator](#input\_orchestrator) | The orchestrator to use for the ZenML stack. Valid values are: `local`, `vertex`, `skypilot`, `airflow`. | `string` | `"vertex"` | no |
+| <a name="input_orchestrator_config"></a> [orchestrator\_config](#input\_orchestrator\_config) | Configuration for the orchestrator. | `map(any)` | `{}` | no |
+| <a name="input_project_id"></a> [project\_id](#input\_project\_id) | The GCP project ID to deploy resources in. If not set, the provider's project ID will be used. | `string` | `null` | no |
+| <a name="input_region"></a> [region](#input\_region) | The GCP region to deploy resources in. If not set, the provider's region will be used. | `string` | `null` | no |
+| <a name="input_step_operator_config"></a> [step\_operator\_config](#input\_step\_operator\_config) | Configuration for the step operator. | `map(any)` | `{}` | no |
+| <a name="input_zenml_stack_deployment"></a> [zenml\_stack\_deployment](#input\_zenml\_stack\_deployment) | The name of the ZenML stack deployment. This is used to label resources created by this module. | `string` | `"default"` | no |
+| <a name="input_zenml_stack_name"></a> [zenml\_stack\_name](#input\_zenml\_stack\_name) | The name of the ZenML stack to create. If not set, a random name will be generated. | `string` | `""` | no |
+
+
 ## 🎓 Learning Resources
 
 [ZenML Documentation](https://docs.zenml.io/)

@@ -56,3 +56,15 @@ variable "zenml_stack_deployment" {
   type        = string
   default     = "terraform"
 }
+
+variable "region" {
+  type        = string
+  description = "The GCP region to deploy resources in. If not set, the provider's region will be used."
+  default     = null
+}
+
+variable "project_id" {
+  type        = string
+  description = "The GCP project ID to deploy resources in. If not set, the provider's project ID will be used."
+  default     = null
+}
