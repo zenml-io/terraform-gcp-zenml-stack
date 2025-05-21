@@ -57,6 +57,12 @@ variable "zenml_stack_deployment" {
   default     = "terraform"
 }
 
+variable "labels" {
+  type        = map(string)
+  description = "A map of labels to apply to all GCP resources created by this module."
+  default     = {}
+}
+
 variable "region" {
   type        = string
   description = "The GCP region to deploy resources in. If not set, the provider's region will be used."

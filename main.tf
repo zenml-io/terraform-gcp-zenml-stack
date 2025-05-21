@@ -10,7 +10,6 @@ terraform {
   }
 }
 
-
 data "google_client_config" "current" {}
 data "google_project" "project" {
   project_id = local.project_id
@@ -18,27 +17,26 @@ data "google_project" "project" {
 data "zenml_server" "zenml_info" {}
 
 locals {
-  project_id = coalesce(var.project_id, data.google_client_config.current.project)
-  region     = coalesce(var.region, data.google_client_config.current.region)
-
-  pro_workspace_id = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "")
+  project_id        = coalesce(var.project_id, data.google_client_config.current.project)
+  region            = coalesce(var.region, data.google_client_config.current.region)
+  pro_workspace_id  = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "")
   pro_dashboard_url = coalesce(data.zenml_server.zenml_info.pro_dashboard_url, "")
   # Check if the dashboard URL indicates a ZenML Cloud deployment
-  is_zenml_cloud = length(regexall("^https://cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
+  is_zenml_cloud         = length(regexall("^https://cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
   is_zenml_cloud_staging = length(regexall("^https://staging\\.cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
-  zenml_pro_aws_account = local.is_zenml_cloud ? "715803424590" : "339712793861"
+  zenml_pro_aws_account  = local.is_zenml_cloud ? "715803424590" : "339712793861"
   # Split version string into array of numbers [major, minor, patch]
   zenml_version_parts = [for part in split(".", data.zenml_server.zenml_info.version) : tonumber(part)]
   # Convert to a comparable number where each version part is padded with zeros
   # This gives us a number like: major * 1000000 + minor * 1000 + patch
   zenml_version_comparable = (
-    coalesce(local.zenml_version_parts[0], 0) * 1000000 + 
-    coalesce(local.zenml_version_parts[1], 0) * 1000 + 
+    coalesce(local.zenml_version_parts[0], 0) * 1000000 +
+    coalesce(local.zenml_version_parts[1], 0) * 1000 +
     coalesce(local.zenml_version_parts[2], 0)
   )
   # Compare with target versions (0.63.0 = 63000, 0.73.0 = 73000)
-  is_version_gt_0_63  = local.zenml_version_comparable > 63000
-  is_version_gte_0_73 = local.zenml_version_comparable >= 73000
+  is_version_gt_0_63                = local.zenml_version_comparable > 63000
+  is_version_gte_0_73               = local.zenml_version_comparable >= 73000
   zenml_pro_workspace_iam_role_name = local.pro_workspace_id != "" ? "zenml-${local.pro_workspace_id}" : ""
   # Use workload identity federation only when connected to a ZenML Pro workspace running version higher than 0.63.0 and
   # not using SkyPilot. SkyPilot cannot be used with workload identity federation because it does not support the GCP
@@ -76,6 +74,7 @@ resource "google_project_service" "composer" {
 resource "google_storage_bucket" "artifact_store" {
   name          = "zenml-${data.google_project.project.number}-${random_id.resource_name_suffix.hex}"
   location      = local.region
+  labels        = var.labels
   depends_on    = [google_project_service.common_services]
   force_destroy = true
 }
@@ -84,6 +83,7 @@ resource "google_artifact_registry_repository" "container_registry" {
   location      = local.region
   repository_id = "zenml-${random_id.resource_name_suffix.hex}"
   format        = "DOCKER"
+  labels        = var.labels
   depends_on    = [google_project_service.common_services]
 }
 
@@ -91,6 +91,7 @@ resource "google_composer_environment" "composer_env" {
   count  = var.orchestrator == "airflow" ? 1 : 0
   name   = "zenml-${random_id.resource_name_suffix.hex}"
   region = local.region
+  labels = var.labels
 
   storage_config {
     bucket = google_storage_bucket.artifact_store.name
@@ -488,7 +489,7 @@ resource "zenml_stack_component" "step_operator" {
 
 locals {
   image_builder_default_config = {}
-  image_builder_config = merge(local.image_builder_default_config, var.image_builder_config)
+  image_builder_config         = merge(local.image_builder_default_config, var.image_builder_config)
 }
 
 # Image Builder
