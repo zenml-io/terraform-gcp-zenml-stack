@@ -12,29 +12,31 @@ terraform {
 
 data "google_client_config" "current" {}
 data "google_project" "project" {
-  project_id = data.google_client_config.current.project
+  project_id = local.project_id
 }
 data "zenml_server" "zenml_info" {}
 
 locals {
-  pro_workspace_id = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "")
+  project_id        = coalesce(var.project_id, data.google_client_config.current.project)
+  region            = coalesce(var.region, data.google_client_config.current.region)
+  pro_workspace_id  = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "")
   pro_dashboard_url = coalesce(data.zenml_server.zenml_info.pro_dashboard_url, "")
   # Check if the dashboard URL indicates a ZenML Cloud deployment
-  is_zenml_cloud = length(regexall("^https://cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
+  is_zenml_cloud         = length(regexall("^https://cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
   is_zenml_cloud_staging = length(regexall("^https://staging\\.cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
-  zenml_pro_aws_account = local.is_zenml_cloud ? "715803424590" : "339712793861"
+  zenml_pro_aws_account  = local.is_zenml_cloud ? "715803424590" : "339712793861"
   # Split version string into array of numbers [major, minor, patch]
   zenml_version_parts = [for part in split(".", data.zenml_server.zenml_info.version) : tonumber(part)]
   # Convert to a comparable number where each version part is padded with zeros
   # This gives us a number like: major * 1000000 + minor * 1000 + patch
   zenml_version_comparable = (
-    coalesce(local.zenml_version_parts[0], 0) * 1000000 + 
-    coalesce(local.zenml_version_parts[1], 0) * 1000 + 
+    coalesce(local.zenml_version_parts[0], 0) * 1000000 +
+    coalesce(local.zenml_version_parts[1], 0) * 1000 +
     coalesce(local.zenml_version_parts[2], 0)
   )
   # Compare with target versions (0.63.0 = 63000, 0.73.0 = 73000)
-  is_version_gt_0_63  = local.zenml_version_comparable > 63000
-  is_version_gte_0_73 = local.zenml_version_comparable >= 73000
+  is_version_gt_0_63                = local.zenml_version_comparable > 63000
+  is_version_gte_0_73               = local.zenml_version_comparable >= 73000
   zenml_pro_workspace_iam_role_name = local.pro_workspace_id != "" ? "zenml-${local.pro_workspace_id}" : ""
   # Use workload identity federation only when connected to a ZenML Pro workspace running version higher than 0.63.0 and
   # not using SkyPilot. SkyPilot cannot be used with workload identity federation because it does not support the GCP
@@ -71,22 +73,25 @@ resource "google_project_service" "composer" {
 
 resource "google_storage_bucket" "artifact_store" {
   name          = "zenml-${data.google_project.project.number}-${random_id.resource_name_suffix.hex}"
-  location      = data.google_client_config.current.region
+  location      = local.region
+  labels        = var.labels
   depends_on    = [google_project_service.common_services]
   force_destroy = true
 }
 
 resource "google_artifact_registry_repository" "container_registry" {
-  location      = data.google_client_config.current.region
+  location      = local.region
   repository_id = "zenml-${random_id.resource_name_suffix.hex}"
   format        = "DOCKER"
+  labels        = var.labels
   depends_on    = [google_project_service.common_services]
 }
 
 resource "google_composer_environment" "composer_env" {
   count  = var.orchestrator == "airflow" ? 1 : 0
   name   = "zenml-${random_id.resource_name_suffix.hex}"
-  region = data.google_client_config.current.region
+  region = local.region
+  labels = var.labels
 
   storage_config {
     bucket = google_storage_bucket.artifact_store.name
@@ -105,7 +110,7 @@ resource "google_service_account" "zenml_sa" {
 
 # Update IAM roles for the service account
 resource "google_project_iam_member" "storage_object_user" {
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/storage.objectUser"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 
@@ -117,73 +122,73 @@ resource "google_project_iam_member" "storage_object_user" {
 }
 
 resource "google_project_iam_member" "artifact_registry_writer" {
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/artifactregistry.createOnPushWriter"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 
   condition {
     title       = "Restrict access to the ZenML container registry"
     description = "Grants access only to the ZenML container registry"
-    expression  = "resource.name.startsWith('projects/${data.google_project.project.number}/locations/${data.google_client_config.current.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}')"
+    expression  = "resource.name.startsWith('projects/${data.google_project.project.number}/locations/${local.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}')"
   }
 }
 
 resource "google_project_iam_member" "cloud_build_editor" {
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/cloudbuild.builds.editor"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "cloud_build_builder" {
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/cloudbuild.builds.builder"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "ai_platform_service_agent" {
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/aiplatform.serviceAgent"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "skypilot_browser" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/browser"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "skypilot_compute_admin" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/compute.admin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "skypilot_iam_service_account_admin" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/iam.serviceAccountAdmin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "skypilot_service_account_user" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/iam.serviceAccountUser"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "skypilot_service_usage_admin" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/serviceusage.serviceUsageAdmin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "skypilot_storage_admin" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/storage.admin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
@@ -191,7 +196,7 @@ resource "google_project_iam_member" "skypilot_storage_admin" {
 
 resource "google_project_iam_member" "skypilot_security_admin" {
   count   = var.orchestrator == "skypilot" ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/iam.securityAdmin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
@@ -244,7 +249,7 @@ resource "google_service_account_iam_binding" "workload_identity_binding" {
 # identity federation: roles/iam.serviceAccountTokenCreator
 resource "google_project_iam_member" "service_account_token_creator" {
   count   = local.use_workload_identity ? 1 : 0
-  project = data.google_client_config.current.project
+  project = local.project_id
   role    = "roles/iam.serviceAccountTokenCreator"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
@@ -255,7 +260,7 @@ locals {
   # using the ZenML Pro workspace or not.
   service_connector_config = {
     external_account = {
-      project_id = "${data.google_client_config.current.project}"
+      project_id = local.project_id
       external_account_json = local.use_workload_identity ? jsonencode({
         "type" : "external_account",
         "audience" : "//iam.googleapis.com/projects/${data.google_project.project.number}/locations/global/workloadIdentityPools/${google_iam_workload_identity_pool.workload_identity_pool[0].workload_identity_pool_id}/providers/${google_iam_workload_identity_pool_provider.aws_provider[0].workload_identity_pool_provider_id}",
@@ -340,7 +345,7 @@ resource "zenml_service_connector" "gar" {
   resource_type = "docker-registry"
   # The resource ID for the Google Artifact Registry is in the format:
   # projects/<project-id>/locations/<location>/repositories/<repository-id>
-  resource_id = "projects/${data.google_client_config.current.project}/locations/${data.google_client_config.current.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}"
+  resource_id = "projects/${local.project_id}/locations/${local.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}"
 
   configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : "service_account"]
 
@@ -363,7 +368,7 @@ resource "zenml_service_connector" "gar" {
 
 locals {
   container_registry_default_config = {
-    uri = "${data.google_client_config.current.region}-docker.pkg.dev/${data.google_client_config.current.project}/${google_artifact_registry_repository.container_registry.repository_id}"
+    uri = "${local.region}-docker.pkg.dev/${local.project_id}/${google_artifact_registry_repository.container_registry.repository_id}"
   }
   container_registry_config = merge(local.container_registry_default_config, var.container_registry_config)
 }
@@ -393,11 +398,11 @@ locals {
   orchestrator_default_config = {
     local = {}
     vertex = {
-      location                 = "${data.google_client_config.current.region}"
+      location                 = local.region
       workload_service_account = "${google_service_account.zenml_sa.email}"
     }
     skypilot = {
-      region = "${data.google_client_config.current.region}"
+      region = local.region
     }
     airflow = {
       dag_output_dir = "gs://${google_storage_bucket.artifact_store.name}/dags",
@@ -460,7 +465,7 @@ resource "zenml_stack_component" "orchestrator" {
 
 locals {
   step_operator_default_config = {
-    region          = "${data.google_client_config.current.region}"
+    region          = local.region
     service_account = "${google_service_account.zenml_sa.email}"
   }
   step_operator_config = merge(local.step_operator_default_config, var.step_operator_config)
@@ -484,7 +489,7 @@ resource "zenml_stack_component" "step_operator" {
 
 locals {
   image_builder_default_config = {}
-  image_builder_config = merge(local.image_builder_default_config, var.image_builder_config)
+  image_builder_config         = merge(local.image_builder_default_config, var.image_builder_config)
 }
 
 # Image Builder
@@ -505,8 +510,8 @@ resource "zenml_stack_component" "image_builder" {
 
 locals {
   experiment_tracker_default_config = {
-    project        = "${data.google_client_config.current.project}"
-    location       = "${data.google_client_config.current.region}"
+    project        = local.project_id
+    location       = local.region
     staging_bucket = "gs://${google_storage_bucket.artifact_store.name}"
   }
   experiment_tracker_config = merge(local.experiment_tracker_default_config, var.experiment_tracker_config)

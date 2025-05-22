@@ -143,37 +143,12 @@ output "zenml_stack_name" {
 }
 ```
 
-## 🎓 Learning Resources
+## Terraform Module Details
 
-[ZenML Documentation](https://docs.zenml.io/)
-[ZenML Starter Guide](https://docs.zenml.io/user-guide/starter-guide)
-[ZenML Examples](https://github.com/zenml-io/zenml/tree/main/examples)
-[ZenML Blog](https://www.zenml.io/blog)
+For detailed information about the module's inputs, outputs, dependencies, and resources, please refer to the official Terraform Registry page:
 
-## 🆘 Getting Help
-If you need assistance, join our Slack community or open an issue on our GitHub repo.
+- [Inputs](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=inputs)
+- [Outputs](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=outputs)
+- [Dependencies](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=dependencies)
+- [Resources](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=resources)
 
-
-<div>
-<p align="left">
-    <div align="left">
-      Join our <a href="https://zenml.io/slack" target="_blank">
-      <img width="18" src="https://cdn3.iconfinder.com/data/icons/logos-and-brands-adobe/512/306_Slack-512.png" alt="Slack"/>
-    <b>Slack Community</b> </a> and be part of the ZenML family.
-    </div>
-    <br />
-    <a href="https://zenml.io/features">Features</a>
-    ·
-    <a href="https://zenml.io/roadmap">Roadmap</a>
-    ·
-    <a href="https://github.com/zenml-io/zenml/issues">Report Bug</a>
-    ·
-    <a href="https://zenml.io/cloud">Sign up for ZenML Pro</a>
-    ·
-    <a href="https://www.zenml.io/blog">Read Blog</a>
-    ·
-    <a href="https://github.com/zenml-io/zenml/issues?q=is%3Aopen+is%3Aissue+archived%3Afalse+label%3A%22good+first+issue%22">Contribute to Open Source</a>
-    ·
-    <a href="https://github.com/zenml-io/zenml-projects">Projects Showcase</a>
-  </p>
-</div>
