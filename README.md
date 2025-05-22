@@ -143,71 +143,12 @@ output "zenml_stack_name" {
 }
 ```
 
-## Requirements
+## Terraform Module Details
 
-| Name                                                                      | Version     |
-| ------------------------------------------------------------------------- | ----------- |
-| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0      |
-| <a name="requirement_google"></a> [google](#requirement\_google)          | ~> 5.0      |
-| <a name="requirement_zenml"></a> [zenml](#requirement\_zenml)             | any version |
+For detailed information about the module's inputs, outputs, dependencies, and resources, please refer to the official Terraform Registry page:
 
-## Providers
+- [Inputs](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=inputs)
+- [Outputs](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=outputs)
+- [Dependencies](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=dependencies)
+- [Resources](https://registry.terraform.io/modules/zenml-io/zenml-stack/gcp/latest?tab=resources)
 
-| Name                                                       | Version |
-| ---------------------------------------------------------- | ------- |
-| <a name="provider_google"></a> [google](#provider\_google) | ~> 5.0  |
-| <a name="provider_random"></a> [random](#provider\_random) | n/a     |
-| <a name="provider_zenml"></a> [zenml](#provider\_zenml)    | n/a     |
-
-## Inputs
-
-| Name                                                                                                              | Description                                                                                              | Type       | Default     | Required |
-| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------- | ----------- | :------: |
-| <a name="input_artifact_store_config"></a> [artifact\_store\_config](#input\_artifact\_store\_config)             | Configuration for the artifact store.                                                                    | `map(any)` | `{}`        |    no    |
-| <a name="input_container_registry_config"></a> [container\_registry\_config](#input\_container\_registry\_config) | Configuration for the container registry.                                                                | `map(any)` | `{}`        |    no    |
-| <a name="input_experiment_tracker_config"></a> [experiment\_tracker\_config](#input\_experiment\_tracker\_config) | Configuration for the experiment tracker.                                                                | `map(any)` | `{}`        |    no    |
-| <a name="input_image_builder_config"></a> [image\_builder\_config](#input\_image\_builder\_config)                | Configuration for the image builder.                                                                     | `map(any)` | `{}`        |    no    |
-| <a name="input_labels"></a> [labels](#input\_labels)                                                              | A map of labels to apply to all GCP resources created by this module.                                    | `map(string)` | `{}`        |    no    |
-| <a name="input_orchestrator"></a> [orchestrator](#input\_orchestrator)                                            | The orchestrator to use for the ZenML stack. Valid values are: `local`, `vertex`, `skypilot`, `airflow`. | `string`   | `"vertex"`  |    no    |
-| <a name="input_orchestrator_config"></a> [orchestrator\_config](#input\_orchestrator\_config)                     | Configuration for the orchestrator.                                                                      | `map(any)` | `{}`        |    no    |
-| <a name="input_project_id"></a> [project\_id](#input\_project\_id)                                                | The GCP project ID to deploy resources in. If not set, the provider's project ID will be used.           | `string`   | `null`      |    no    |
-| <a name="input_region"></a> [region](#input\_region)                                                              | The GCP region to deploy resources in. If not set, the provider's region will be used.                   | `string`   | `null`      |    no    |
-| <a name="input_step_operator_config"></a> [step\_operator\_config](#input\_step\_operator\_config)                | Configuration for the step operator.                                                                     | `map(any)` | `{}`        |    no    |
-| <a name="input_zenml_stack_deployment"></a> [zenml\_stack\_deployment](#input\_zenml\_stack\_deployment)          | The name of the ZenML stack deployment. This is used to label resources created by this module.          | `string`   | `"default"` |    no    |
-| <a name="input_zenml_stack_name"></a> [zenml\_stack\_name](#input\_zenml\_stack\_name)                            | The name of the ZenML stack to create. If not set, a random name will be generated.                      | `string`   | `""`        |    no    |
-
-
-## 🎓 Learning Resources
-
-[ZenML Documentation](https://docs.zenml.io/)
-[ZenML Starter Guide](https://docs.zenml.io/user-guide/starter-guide)
-[ZenML Examples](https://github.com/zenml-io/zenml/tree/main/examples)
-[ZenML Blog](https://www.zenml.io/blog)
-
-## 🆘 Getting Help
-If you need assistance, join our Slack community or open an issue on our GitHub repo.
-
-
-<div>
-<p align="left">
-    <div align="left">
-      Join our <a href="https://zenml.io/slack" target="_blank">
-      <img width="18" src="https://cdn3.iconfinder.com/data/icons/logos-and-brands-adobe/512/306_Slack-512.png" alt="Slack"/>
-    <b>Slack Community</b> </a> and be part of the ZenML family.
-    </div>
-    <br />
-    <a href="https://zenml.io/features">Features</a>
-    ·
-    <a href="https://zenml.io/roadmap">Roadmap</a>
-    ·
-    <a href="https://github.com/zenml-io/zenml/issues">Report Bug</a>
-    ·
-    <a href="https://zenml.io/cloud">Sign up for ZenML Pro</a>
-    ·
-    <a href="https://www.zenml.io/blog">Read Blog</a>
-    ·
-    <a href="https://github.com/zenml-io/zenml/issues?q=is%3Aopen+is%3Aissue+archived%3Afalse+label%3A%22good+first+issue%22">Contribute to Open Source</a>
-    ·
-    <a href="https://github.com/zenml-io/zenml-projects">Projects Showcase</a>
-  </p>
-</div>
