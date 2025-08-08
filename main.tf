@@ -19,8 +19,8 @@ data "zenml_server" "zenml_info" {}
 locals {
   project_id        = coalesce(var.project_id, data.google_client_config.current.project)
   region            = coalesce(var.region, data.google_client_config.current.region)
-  pro_workspace_id  = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "")
-  pro_dashboard_url = coalesce(data.zenml_server.zenml_info.pro_dashboard_url, "")
+  pro_workspace_id  = coalesce(data.zenml_server.zenml_info.pro_workspace_id, "n/a")
+  pro_dashboard_url = coalesce(data.zenml_server.zenml_info.pro_dashboard_url, "n/a")
   # Check if the dashboard URL indicates a ZenML Cloud deployment
   is_zenml_cloud         = length(regexall("^https://cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
   is_zenml_cloud_staging = length(regexall("^https://staging\\.cloud\\.zenml\\.io", local.pro_dashboard_url)) > 0
