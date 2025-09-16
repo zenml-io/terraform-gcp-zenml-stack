@@ -38,6 +38,16 @@ output "image_builder" {
   value       = data.zenml_stack_component.image_builder
 }
 
+output "experiment_tracker" {
+  description = "The experiment tracker that was registered with the ZenML server"
+  value       = local.is_version_gte_0_73 ? data.zenml_stack_component.experiment_tracker[0] : null
+}
+
+output "deployer" {
+  description = "The deployer that was registered with the ZenML server"
+  value       = local.use_cloud_run ? data.zenml_stack_component.deployer[0] : null
+}
+
 output "zenml_stack" {
   description = "The ZenML stack that was registered with the ZenML server"
   value       = data.zenml_stack.stack

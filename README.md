@@ -52,7 +52,7 @@ The Terraform module in this repository creates the following resources in your 
 1. a GCS bucket
 2. a Google Artifact Registry
 3. a Cloud Composer environment (only if the `orchestrator` variable is set to `airflow`)
-4. a Service Account with the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI, SkyPilot or GCP Cloud Composer.
+4. a Service Account with the minimum necessary permissions to access the GCS bucket, the Google Artifact Registry and the GCP project to build and push container images with Google Cloud Build, store artifacts and run pipelines with Vertex AI, SkyPilot or GCP Cloud Composer and deploy pipelines with Cloud Run.
 5. depending on the target ZenML Server capabilities, different authentication methods are used:
   * for a self-hosted ZenML server, a Service Account Key is generated and shared with the ZenML server
   * for a ZenML Pro account, GCP Workload Identity Federation is used to authenticate with the ZenML server, so that no sensitive credentials are shared with the ZenML server. For this, a GCP Workload Identity Pool and a GCP Workload Identity Provider are created and linked to the GCP Service Account. There's only one exception: when the SkyPilot orchestrator is used, this authentication method is not supported, so the Service Account Key is used instead.
@@ -70,9 +70,10 @@ The ZenML stack configuration is the following:
   * if `orchestrator` is set to `vertex` (default): a Vertex AI Orchestrator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
   * if `orchestrator` is set to `skypilot`: a SkyPilot Orchestrator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
   * if `orchestrator` is set to `airflow`: an Airflow Orchestrator linked to the Cloud Composer environment
-4. a Google Cloud Build Image Builder linked to the GCP project via an AWS Service Connector configured with IAM role credentials
-5. a Vertex AI Step Operator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
-6. a Vertex AI Experiment Tracker linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+4. a Cloud Run Deployer linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+5. a Google Cloud Build Image Builder linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+6. a Vertex AI Step Operator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+7. a Vertex AI Experiment Tracker linked to the GCP project via an AWS Service Connector configured with IAM role credentials
 
 To use the ZenML stack, you will need to install the required integrations:
 
