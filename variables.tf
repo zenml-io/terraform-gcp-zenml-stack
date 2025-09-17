@@ -45,6 +45,12 @@ variable "experiment_tracker_config" {
   default     = {}
 }
 
+variable "cloud_run_deployer_config" {
+  description = "Additional configuration for the cloud run deployer"
+  type        = map(string)
+  default     = {}
+}
+
 variable "zenml_stack_name" {
   description = "A custom name for the ZenML stack that will be registered with the ZenML server"
   type        = string
