@@ -199,7 +199,7 @@ resource "google_project_iam_member" "secret_manager_zenml_secrets" {
   condition {
     title       = "Restrict access to ZenML secrets"
     description = "Grants access only to secrets with ZenML prefix"
-    expression  = "resource.name.startsWith('projects/${data.google_project.project.number}/secrets/zenml_${random_id.resource_name_suffix.hex}')"
+    expression  = "resource.name.startsWith('projects/${data.google_project.project.number}/secrets/zenml-${random_id.resource_name_suffix.hex}')"
   }
 }
 
@@ -599,8 +599,8 @@ resource "zenml_stack_component" "experiment_tracker" {
 locals {
   cloud_run_deployer_default_config = {
     location = local.region
-    service_name_prefix = "zenml_${random_id.resource_name_suffix.hex}"
-    secret_name_prefix = "zenml_${random_id.resource_name_suffix.hex}"
+    service_name_prefix = "zenml-${random_id.resource_name_suffix.hex}"
+    secret_name_prefix = "zenml-${random_id.resource_name_suffix.hex}"
   }
   cloud_run_deployer_config = merge(local.cloud_run_deployer_default_config, var.cloud_run_deployer_config)
 }
