@@ -21,10 +21,22 @@ variable "orchestrator_config" {
   default     = {}
 }
 
+variable "enable_step_operator" {
+  description = "Whether to include the step operator in the stack"
+  type        = bool
+  default     = true
+}
+
 variable "step_operator_config" {
   description = "Additional configuration for the step operator"
   type        = map(string)
   default     = {}
+}
+
+variable "enable_container_registry" {
+  description = "Whether to include the container registry in the stack"
+  type        = bool
+  default     = true
 }
 
 variable "container_registry_config" {
@@ -33,10 +45,22 @@ variable "container_registry_config" {
   default     = {}
 }
 
+variable "enable_image_builder" {
+  description = "Whether to include the image builder in the stack"
+  type        = bool
+  default     = true
+}
+
 variable "image_builder_config" {
   description = "Additional configuration for the image builder"
   type        = map(string)
   default     = {}
+}
+
+variable "enable_experiment_tracker" {
+  description = "Whether to include the experiment tracker in the stack"
+  type        = bool
+  default     = true
 }
 
 variable "experiment_tracker_config" {
@@ -45,8 +69,14 @@ variable "experiment_tracker_config" {
   default     = {}
 }
 
-variable "cloud_run_deployer_config" {
-  description = "Additional configuration for the cloud run deployer"
+variable "enable_deployer" {
+  description = "Whether to include the deployer in the stack"
+  type        = bool
+  default     = true
+}
+
+variable "deployer_config" {
+  description = "Additional configuration for the deployer"
   type        = map(string)
   default     = {}
 }

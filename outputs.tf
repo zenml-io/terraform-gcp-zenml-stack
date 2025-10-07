@@ -5,7 +5,7 @@ output "gcs_service_connector" {
 
 output "gar_service_connector" {
   description = "The Google Artifact Registry service connector that was registered with the ZenML server"
-  value       = data.zenml_service_connector.gar
+  value       = var.enable_container_registry ? data.zenml_service_connector.gar[0] : null
 }
 
 output "gcp_service_connector" {
@@ -20,7 +20,7 @@ output "artifact_store" {
 
 output "container_registry" {
   description = "The container registry that was registered with the ZenML server"
-  value       = data.zenml_stack_component.container_registry
+  value       = var.enable_container_registry ? data.zenml_stack_component.container_registry[0] : null
 }
 
 output "orchestrator" {
@@ -30,22 +30,22 @@ output "orchestrator" {
 
 output "step_operator" {
   description = "The step operator that was registered with the ZenML server"
-  value       = data.zenml_stack_component.step_operator
+  value       = var.enable_step_operator ? data.zenml_stack_component.step_operator[0] : null
 }
 
 output "image_builder" {
   description = "The image builder that was registered with the ZenML server"
-  value       = data.zenml_stack_component.image_builder
+  value       = var.enable_image_builder ? data.zenml_stack_component.image_builder[0] : null
 }
 
 output "experiment_tracker" {
   description = "The experiment tracker that was registered with the ZenML server"
-  value       = local.is_version_gte_0_73 ? data.zenml_stack_component.experiment_tracker[0] : null
+  value       = var.enable_experiment_tracker && local.use_experiment_tracker ? data.zenml_stack_component.experiment_tracker[0] : null
 }
 
 output "deployer" {
   description = "The deployer that was registered with the ZenML server"
-  value       = local.use_cloud_run ? data.zenml_stack_component.deployer[0] : null
+  value       = var.enable_deployer && local.use_deployer ? data.zenml_stack_component.deployer[0] : null
 }
 
 output "zenml_stack" {
