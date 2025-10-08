@@ -46,7 +46,9 @@ locals {
   # that version.
   use_workload_identity = (local.is_zenml_cloud || local.is_zenml_cloud_staging) && var.orchestrator != "skypilot" && local.is_version_gt_0_63
   # Cloud Run is only available as a deployer in ZenML versions higher than 0.85.0
-  use_cloud_run = local.is_version_gt_0_85
+  use_deployer = local.is_version_gt_0_85
+  # The Vertex experiment tracker is only available in ZenML 0.73.0 and above
+  use_experiment_tracker = local.is_version_gte_0_73
 }
 
 resource "random_id" "resource_name_suffix" {
@@ -59,15 +61,31 @@ resource "random_id" "resource_name_suffix" {
 resource "google_project_service" "common_services" {
   for_each = toset([
     "iam.googleapis.com",
-    "artifactregistry.googleapis.com",
     "storage-api.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "aiplatform.googleapis.com",
-    "run.googleapis.com",
-    "secretmanager.googleapis.com",
   ])
   project            = local.project_id
   service            = each.key
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "artifact_registry" {
+  count              = var.enable_container_registry ? 1 : 0
+  project            = local.project_id
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "vertex_ai" {
+  count              = var.orchestrator == "vertex" || var.enable_step_operator || var.enable_experiment_tracker ? 1 : 0
+  project            = local.project_id
+  service            = "aiplatform.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "compute" {
+  count              = var.orchestrator == "skypilot" ? 1 : 0
+  project            = local.project_id
+  service            = "compute.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -75,6 +93,27 @@ resource "google_project_service" "composer" {
   count              = var.orchestrator == "airflow" ? 1 : 0
   project            = local.project_id
   service            = "composer.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "cloud_build" {
+  count              = var.enable_image_builder ? 1 : 0
+  project            = local.project_id
+  service            = "cloudbuild.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "cloud_run" {
+  count = var.enable_deployer && local.use_deployer ? 1 : 0
+  project            = local.project_id
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "secret_manager" {
+  count = var.enable_deployer && local.use_deployer ? 1 : 0
+  project            = local.project_id
+  service            = "secretmanager.googleapis.com"
   disable_on_destroy = false
 }
 
@@ -88,12 +127,13 @@ resource "google_storage_bucket" "artifact_store" {
 }
 
 resource "google_artifact_registry_repository" "container_registry" {
+  count         = var.enable_container_registry ? 1 : 0
   location      = local.region
   project       = local.project_id
   repository_id = "zenml-${random_id.resource_name_suffix.hex}"
   format        = "DOCKER"
   labels        = var.labels
-  depends_on    = [google_project_service.common_services]
+  depends_on    = [google_project_service.artifact_registry[0]]
 }
 
 resource "google_composer_environment" "composer_env" {
@@ -111,18 +151,21 @@ resource "google_composer_environment" "composer_env" {
     environment_size = "ENVIRONMENT_SIZE_SMALL"
     resilience_mode  = "STANDARD_RESILIENCE"
   }
+
+  depends_on = [google_project_service.composer[0]]
 }
 
 resource "google_service_account" "zenml_sa" {
   project      = local.project_id
   account_id   = "zenml-${random_id.resource_name_suffix.hex}"
   display_name = "ZenML Service Account"
+  depends_on = [google_project_service.common_services]
 }
 
 # Update IAM roles for the service account
-resource "google_project_iam_member" "storage_object_user" {
+resource "google_project_iam_member" "storage_admin" {
   project = local.project_id
-  role    = "roles/storage.objectUser"
+  role    = "roles/storage.admin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 
   condition {
@@ -133,6 +176,7 @@ resource "google_project_iam_member" "storage_object_user" {
 }
 
 resource "google_project_iam_member" "artifact_registry_writer" {
+  count = var.enable_container_registry ? 1 : 0
   project = local.project_id
   role    = "roles/artifactregistry.createOnPushWriter"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
@@ -140,39 +184,40 @@ resource "google_project_iam_member" "artifact_registry_writer" {
   condition {
     title       = "Restrict access to the ZenML container registry"
     description = "Grants access only to the ZenML container registry"
-    expression  = "resource.name.startsWith('projects/${data.google_project.project.number}/locations/${local.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}')"
+    expression  = "resource.name.startsWith('projects/${data.google_project.project.number}/locations/${local.region}/repositories/${google_artifact_registry_repository.container_registry[0].repository_id}')"
   }
 }
 
 resource "google_project_iam_member" "cloud_build_editor" {
+  count = var.enable_image_builder ? 1 : 0
   project = local.project_id
   role    = "roles/cloudbuild.builds.editor"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "cloud_build_builder" {
+  count = var.enable_image_builder ? 1 : 0
   project = local.project_id
   role    = "roles/cloudbuild.builds.builder"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "ai_platform_service_agent" {
+  count = var.orchestrator == "vertex" || var.enable_step_operator || var.enable_experiment_tracker ? 1 : 0
   project = local.project_id
   role    = "roles/aiplatform.serviceAgent"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
 resource "google_project_iam_member" "cloud_run_admin" {
-  count   = local.use_cloud_run ? 1 : 0
+  count   = var.enable_deployer && local.use_deployer ? 1 : 0
   project = local.project_id
   role    = "roles/run.admin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
-# Secret Manager permissions for Cloud Run
-# Custom role for creating secrets with ZenML prefix
 resource "google_project_iam_custom_role" "zenml_secret_creator" {
-  count       = local.use_cloud_run ? 1 : 0
+  count       = var.enable_deployer && local.use_deployer ? 1 : 0
   role_id     = "zenml_secret_creator_${random_id.resource_name_suffix.hex}"
   title       = "ZenML Secret Creator"
   description = "Custom role to create secrets for the ZenML Cloud Run deployer"
@@ -181,17 +226,15 @@ resource "google_project_iam_custom_role" "zenml_secret_creator" {
   ]
 }
 
-# Assign the custom role to the service account
 resource "google_project_iam_member" "secret_manager_creator" {
-  count   = local.use_cloud_run ? 1 : 0
+  count   = var.enable_deployer && local.use_deployer ? 1 : 0
   project = local.project_id
   role    = google_project_iam_custom_role.zenml_secret_creator[0].name
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
 }
 
-# Allow managing secrets only with ZenML prefix
 resource "google_project_iam_member" "secret_manager_zenml_secrets" {
-  count   = local.use_cloud_run ? 1 : 0
+  count   = var.enable_deployer && local.use_deployer ? 1 : 0
   project = local.project_id
   role    = "roles/secretmanager.admin"
   member  = "serviceAccount:${google_service_account.zenml_sa.email}"
@@ -360,11 +403,11 @@ resource "zenml_service_connector" "gcs" {
     google_storage_bucket.artifact_store,
     google_service_account.zenml_sa,
     google_service_account_key.zenml_sa_key,
-    google_project_iam_member.storage_object_user,
-    google_iam_workload_identity_pool.workload_identity_pool[0],
-    google_iam_workload_identity_pool_provider.aws_provider[0],
-    google_service_account_iam_binding.workload_identity_binding[0],
-    google_project_iam_member.service_account_token_creator[0],
+    google_project_iam_member.storage_admin,
+    google_iam_workload_identity_pool.workload_identity_pool,
+    google_iam_workload_identity_pool_provider.aws_provider,
+    google_service_account_iam_binding.workload_identity_binding,
+    google_project_iam_member.service_account_token_creator,
   ]
 }
 
@@ -393,13 +436,14 @@ resource "zenml_stack_component" "artifact_store" {
 # Container Registry Component
 
 resource "zenml_service_connector" "gar" {
+  count = var.enable_container_registry ? 1 : 0
   name          = var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"
   type          = "gcp"
   auth_method   = local.use_workload_identity ? "external-account" : "service-account"
   resource_type = "docker-registry"
   # The resource ID for the Google Artifact Registry is in the format:
   # projects/<project-id>/locations/<location>/repositories/<repository-id>
-  resource_id = "projects/${local.project_id}/locations/${local.region}/repositories/${google_artifact_registry_repository.container_registry.repository_id}"
+  resource_id = "projects/${local.project_id}/locations/${local.region}/repositories/${google_artifact_registry_repository.container_registry[0].repository_id}"
 
   configuration = local.service_connector_config[local.use_workload_identity ? "external_account" : "service_account"]
 
@@ -413,28 +457,29 @@ resource "zenml_service_connector" "gar" {
     google_service_account.zenml_sa,
     google_service_account_key.zenml_sa_key,
     google_project_iam_member.artifact_registry_writer,
-    google_iam_workload_identity_pool.workload_identity_pool[0],
-    google_iam_workload_identity_pool_provider.aws_provider[0],
-    google_service_account_iam_binding.workload_identity_binding[0],
-    google_project_iam_member.service_account_token_creator[0],
+    google_iam_workload_identity_pool.workload_identity_pool,
+    google_iam_workload_identity_pool_provider.aws_provider,
+    google_service_account_iam_binding.workload_identity_binding,
+    google_project_iam_member.service_account_token_creator,
   ]
 }
 
 locals {
   container_registry_default_config = {
-    uri = "${local.region}-docker.pkg.dev/${local.project_id}/${google_artifact_registry_repository.container_registry.repository_id}"
+    uri = var.enable_container_registry ? "${local.region}-docker.pkg.dev/${local.project_id}/${google_artifact_registry_repository.container_registry[0].repository_id}" : ""
   }
   container_registry_config = merge(local.container_registry_default_config, var.container_registry_config)
 }
 
 resource "zenml_stack_component" "container_registry" {
+  count = var.enable_container_registry ? 1 : 0
   name   = var.zenml_stack_name == "" ? "terraform-gar-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gar"
   type   = "container_registry"
   flavor = "gcp"
 
   configuration = local.container_registry_config
 
-  connector_id = zenml_service_connector.gar.id
+  connector_id = zenml_service_connector.gar[0].id
 
   labels = {
     "zenml:provider"   = "gcp"
@@ -483,26 +528,26 @@ resource "zenml_service_connector" "gcp" {
   depends_on = [
     google_service_account.zenml_sa,
     google_service_account_key.zenml_sa_key,
-    google_project_iam_member.storage_object_user,
+    google_project_iam_member.storage_admin,
     google_project_iam_member.artifact_registry_writer,
     google_project_iam_member.ai_platform_service_agent,
-    google_project_iam_member.cloud_run_admin[0],
-    google_project_iam_custom_role.zenml_secret_creator[0],
-    google_project_iam_member.secret_manager_creator[0],
-    google_project_iam_member.secret_manager_zenml_secrets[0],
+    google_project_iam_member.cloud_run_admin,
+    google_project_iam_custom_role.zenml_secret_creator,
+    google_project_iam_member.secret_manager_creator,
+    google_project_iam_member.secret_manager_zenml_secrets,
     google_project_iam_member.cloud_build_editor,
     google_project_iam_member.cloud_build_builder,
-    google_project_iam_member.skypilot_browser[0],
-    google_project_iam_member.skypilot_compute_admin[0],
-    google_project_iam_member.skypilot_iam_service_account_admin[0],
-    google_project_iam_member.skypilot_service_account_user[0],
-    google_project_iam_member.skypilot_service_usage_admin[0],
-    google_project_iam_member.skypilot_storage_admin[0],
-    google_project_iam_member.skypilot_security_admin[0],
-    google_iam_workload_identity_pool.workload_identity_pool[0],
-    google_iam_workload_identity_pool_provider.aws_provider[0],
-    google_service_account_iam_binding.workload_identity_binding[0],
-    google_project_iam_member.service_account_token_creator[0],
+    google_project_iam_member.skypilot_browser,
+    google_project_iam_member.skypilot_compute_admin,
+    google_project_iam_member.skypilot_iam_service_account_admin,
+    google_project_iam_member.skypilot_service_account_user,
+    google_project_iam_member.skypilot_service_usage_admin,
+    google_project_iam_member.skypilot_storage_admin,
+    google_project_iam_member.skypilot_security_admin,
+    google_iam_workload_identity_pool.workload_identity_pool,
+    google_iam_workload_identity_pool_provider.aws_provider,
+    google_service_account_iam_binding.workload_identity_binding,
+    google_project_iam_member.service_account_token_creator,
   ]
 }
 
@@ -531,6 +576,7 @@ locals {
 
 # Step Operator
 resource "zenml_stack_component" "step_operator" {
+  count = var.enable_step_operator ? 1 : 0
   name   = var.zenml_stack_name == "" ? "terraform-vertex-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-vertex"
   type   = "step_operator"
   flavor = "vertex"
@@ -552,6 +598,7 @@ locals {
 
 # Image Builder
 resource "zenml_stack_component" "image_builder" {
+  count = var.enable_image_builder ? 1 : 0
   name   = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"
   type   = "image_builder"
   flavor = "gcp"
@@ -577,8 +624,7 @@ locals {
 
 # Experiment Tracker
 resource "zenml_stack_component" "experiment_tracker" {
-  # The Vertex experiment tracker is only available in ZenML 0.73.0 and above
-  count = local.is_version_gte_0_73 ? 1 : 0
+  count = var.enable_experiment_tracker && local.use_experiment_tracker ? 1 : 0
 
   name   = var.zenml_stack_name == "" ? "terraform-gcp-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-gcp"
   type   = "experiment_tracker"
@@ -598,15 +644,15 @@ resource "zenml_stack_component" "experiment_tracker" {
 
 locals {
   cloud_run_deployer_default_config = {
-    location = local.region
+    location            = local.region
     service_name_prefix = "zenml-${random_id.resource_name_suffix.hex}"
-    secret_name_prefix = "zenml-${random_id.resource_name_suffix.hex}"
+    secret_name_prefix  = "zenml-${random_id.resource_name_suffix.hex}"
   }
-  cloud_run_deployer_config = merge(local.cloud_run_deployer_default_config, var.cloud_run_deployer_config)
+  cloud_run_deployer_config = merge(local.cloud_run_deployer_default_config, var.deployer_config)
 }
 
 resource "zenml_stack_component" "cloud_run_deployer" {
-  count  = local.use_cloud_run ? 1 : 0
+  count  = var.enable_deployer && local.use_deployer ? 1 : 0
   name   = var.zenml_stack_name == "" ? "terraform-cloud-run-${random_id.resource_name_suffix.hex}" : "${var.zenml_stack_name}-cloud-run"
   type   = "deployer"
   flavor = "gcp"
@@ -628,12 +674,12 @@ resource "zenml_stack" "stack" {
 
   components = {
     artifact_store     = zenml_stack_component.artifact_store.id
-    container_registry = zenml_stack_component.container_registry.id
+    container_registry = var.enable_container_registry ? zenml_stack_component.container_registry[0].id : null
     orchestrator       = zenml_stack_component.orchestrator.id
-    step_operator      = zenml_stack_component.step_operator.id
-    image_builder      = zenml_stack_component.image_builder.id
-    experiment_tracker = local.is_version_gte_0_73 ? zenml_stack_component.experiment_tracker[0].id : null
-    deployer           = local.use_cloud_run ? zenml_stack_component.cloud_run_deployer[0].id : null
+    step_operator      = var.enable_step_operator ? zenml_stack_component.step_operator[0].id : null
+    image_builder      = var.enable_image_builder ? zenml_stack_component.image_builder[0].id : null
+    experiment_tracker = var.enable_experiment_tracker && local.use_experiment_tracker ? zenml_stack_component.experiment_tracker[0].id : null
+    deployer           = var.enable_deployer && local.use_deployer ? zenml_stack_component.cloud_run_deployer[0].id : null
   }
 
   labels = {
@@ -647,7 +693,8 @@ data "zenml_service_connector" "gcs" {
 }
 
 data "zenml_service_connector" "gar" {
-  id = zenml_service_connector.gar.id
+  count = var.enable_container_registry ? 1 : 0
+  id = zenml_service_connector.gar[0].id
 }
 
 data "zenml_service_connector" "gcp" {
@@ -659,7 +706,8 @@ data "zenml_stack_component" "artifact_store" {
 }
 
 data "zenml_stack_component" "container_registry" {
-  id = zenml_stack_component.container_registry.id
+  count = var.enable_container_registry ? 1 : 0
+  id = zenml_stack_component.container_registry[0].id
 }
 
 data "zenml_stack_component" "orchestrator" {
@@ -667,20 +715,22 @@ data "zenml_stack_component" "orchestrator" {
 }
 
 data "zenml_stack_component" "step_operator" {
-  id = zenml_stack_component.step_operator.id
+  count = var.enable_step_operator ? 1 : 0
+  id = zenml_stack_component.step_operator[0].id
 }
 
 data "zenml_stack_component" "image_builder" {
-  id = zenml_stack_component.image_builder.id
+  count = var.enable_image_builder ? 1 : 0
+  id = zenml_stack_component.image_builder[0].id
 }
 
 data "zenml_stack_component" "experiment_tracker" {
-  count = local.is_version_gte_0_73 ? 1 : 0
+  count = var.enable_experiment_tracker && local.use_experiment_tracker ? 1 : 0
   id    = zenml_stack_component.experiment_tracker[0].id
 }
 
 data "zenml_stack_component" "deployer" {
-  count = local.use_cloud_run ? 1 : 0
+  count = var.enable_deployer && local.use_deployer ? 1 : 0
   id    = zenml_stack_component.cloud_run_deployer[0].id
 }
 

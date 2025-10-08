@@ -63,17 +63,17 @@ The Terraform module automatically registers a fully functional GCP [ZenML stack
 
 The ZenML stack configuration is the following:
 
-1. an GCP Artifact Store linked to the GCS bucket via an AWS Service Connector configured with IAM role credentials
-2. an GCP Container Registry linked to the Google Artifact Registry via an AWS Service Connector configured with IAM role credentials
+1. an GCP Artifact Store linked to the GCS bucket via an GCP Service Connector configured with IAM role credentials
+2. an GCP Container Registry linked to the Google Artifact Registry via an GCP Service Connector configured with IAM role credentials
 3. depending on the `orchestrator` input variable:
   * if `orchestrator` is set to `local`: a local Orchestrator. This can be used in combination with the Vertex AI Step Operator to selectively run some steps locally and some on Vertex AI.
-  * if `orchestrator` is set to `vertex` (default): a Vertex AI Orchestrator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
-  * if `orchestrator` is set to `skypilot`: a SkyPilot Orchestrator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+  * if `orchestrator` is set to `vertex` (default): a Vertex AI Orchestrator linked to the GCP project via an GCP Service Connector configured with IAM role credentials
+  * if `orchestrator` is set to `skypilot`: a SkyPilot Orchestrator linked to the GCP project via an GCP Service Connector configured with IAM role credentials
   * if `orchestrator` is set to `airflow`: an Airflow Orchestrator linked to the Cloud Composer environment
-4. a Cloud Run Deployer linked to the GCP project via an AWS Service Connector configured with IAM role credentials
-5. a Google Cloud Build Image Builder linked to the GCP project via an AWS Service Connector configured with IAM role credentials
-6. a Vertex AI Step Operator linked to the GCP project via an AWS Service Connector configured with IAM role credentials
-7. a Vertex AI Experiment Tracker linked to the GCP project via an AWS Service Connector configured with IAM role credentials
+4. a Cloud Run Deployer linked to the GCP project via an GCP Service Connector configured with IAM role credentials
+5. a Google Cloud Build Image Builder linked to the GCP project via an GCP Service Connector configured with IAM role credentials
+6. a Vertex AI Step Operator linked to the GCP project via an GCP Service Connector configured with IAM role credentials
+7. a Vertex AI Experiment Tracker linked to the GCP project via an GCP Service Connector configured with IAM role credentials
 
 To use the ZenML stack, you will need to install the required integrations:
 
